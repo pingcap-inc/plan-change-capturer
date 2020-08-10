@@ -1,15 +1,7 @@
 package main
 
-import "fmt"
+import "github.com/qw4990/plan-change-capturer/cmd"
 
 func main() {
-	xs := " ├─IndexReader_52(Build)"
-	rs := []rune(xs)
-	fmt.Println(rs)
-	x := rune('├')
-	if rs[2] == x {
-		
-	}
-	//x := "├"
-	//fmt.Println(x)
+	cmd.Execute()
 }
