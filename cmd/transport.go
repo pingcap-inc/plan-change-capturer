@@ -44,10 +44,10 @@ func newDBHandler(opt tidbAccessOptions) (*tidbHandler, error) {
 }
 
 type transportOptions struct {
-	src  tidbAccessOptions
-	dst  tidbAccessOptions
-	path string
-	dbs  []string
+	src tidbAccessOptions
+	dst tidbAccessOptions
+	dir string
+	dbs []string
 }
 
 func newTransportCmd() *cobra.Command {
@@ -57,10 +57,10 @@ func newTransportCmd() *cobra.Command {
 		Short: "import/export/transport schemas and statistic information",
 		Long:  `import/export/transport schemas and statistic information`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opt.path == "" {
-				opt.path = tmpPathDir()
+			if opt.dir == "" {
+				opt.dir = tmpPathDir()
 			}
-			if err := os.MkdirAll(opt.path, 0776); err != nil {
+			if err := os.MkdirAll(opt.dir, 0776); err != nil {
 				return err
 			}
 			if opt.src.addr != "" {
@@ -68,10 +68,10 @@ func newTransportCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if err = exportSchemas(src, opt.dbs, opt.path); err != nil {
+				if err = exportSchemas(src, opt.dbs, opt.dir); err != nil {
 					return err
 				}
-				if err = exportStats(src, opt.dbs, opt.path); err != nil {
+				if err = exportStats(src, opt.dbs, opt.dir); err != nil {
 					return err
 				}
 			}
@@ -80,10 +80,10 @@ func newTransportCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if err = importSchemas(dst, opt.dbs, opt.path); err != nil {
+				if err = importSchemas(dst, opt.dbs, opt.dir); err != nil {
 					return err
 				}
-				if err = importStats(dst, opt.dbs, opt.path); err != nil {
+				if err = importStats(dst, opt.dbs, opt.dir); err != nil {
 					return err
 				}
 			}
@@ -100,7 +100,7 @@ func newTransportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.dst.statusPort, "dststatusport", "10080", "")
 	cmd.Flags().StringVar(&opt.dst.user, "dstuser", "", "")
 	cmd.Flags().StringVar(&opt.dst.password, "dstpassword", "", "")
-	cmd.Flags().StringVar(&opt.path, "path", "", "")
+	cmd.Flags().StringVar(&opt.dir, "dir", "", "")
 	cmd.Flags().StringSliceVar(&opt.dbs, "dbs", nil, "")
 	return cmd
 }
