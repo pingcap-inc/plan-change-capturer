@@ -77,7 +77,7 @@ func parseRowV4(cols []string, children []Operator) (Operator, error) {
 }
 
 func adjustJoinChildrenV4(children []Operator) {
-	// make children[0] is the outer child(build side)
+	// make children[0] is the build side
 	if strings.Contains(strings.ToLower(children[0].ID()), "probe") {
 		children[0], children[1] = children[1], children[0]
 	}

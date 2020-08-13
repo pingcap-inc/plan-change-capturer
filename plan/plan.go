@@ -2,7 +2,6 @@ package plan
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 )
 
@@ -112,10 +111,7 @@ func (op BaseOp) Task() TaskType {
 func (op BaseOp) Format(indent int) string {
 	buf := bytes.NewBuffer(nil)
 	buf.WriteString(strings.Repeat(" ", indent))
-	buf.WriteString(op.id)
-	buf.WriteString("\t")
-	buf.WriteString(fmt.Sprintf("%v", op.estRow))
-	buf.WriteString("\n")
+	buf.WriteString(op.id + "\n")
 	for _, child := range op.children {
 		buf.WriteString(child.Format(indent + 4))
 	}
@@ -129,6 +125,16 @@ func (op BaseOp) Children() []Operator {
 type HashJoinOp struct {
 	BaseOp
 	JoinType JoinType
+}
+
+func (op HashJoinOp) Format(indent int) string {
+	buf := bytes.NewBuffer(nil)
+	buf.WriteString(strings.Repeat(" ", indent))
+	buf.WriteString(op.id + "build: " + op.children[0].ID() + "\n")
+	for _, child := range op.children {
+		buf.WriteString(child.Format(indent + 4))
+	}
+	return buf.String()
 }
 
 type IndexJoinOp struct {
@@ -150,6 +156,13 @@ type TableScanOp struct {
 	Table string
 }
 
+func (op TableScanOp) Format(indent int) string {
+	buf := bytes.NewBuffer(nil)
+	buf.WriteString(strings.Repeat(" ", indent))
+	buf.WriteString(op.id + "\ttable:" + op.Table + "\n")
+	return buf.String()
+}
+
 type IndexReaderOp struct {
 	BaseOp
 }
@@ -158,6 +171,13 @@ type IndexScanOp struct {
 	BaseOp
 	Table string
 	Index string
+}
+
+func (op IndexScanOp) Format(indent int) string {
+	buf := bytes.NewBuffer(nil)
+	buf.WriteString(strings.Repeat(" ", indent))
+	buf.WriteString(op.id + "\ttable:" + op.Table + ", index:" + op.Index + "\n")
+	return buf.String()
 }
 
 type IndexLookupOp struct {

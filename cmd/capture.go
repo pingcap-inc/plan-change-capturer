@@ -67,22 +67,29 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string) error {
 		} else if matchPrefixCaseInsensitive(sql, "explain") {
 			r1, err := runExplain(db1, sql)
 			if err != nil {
-				return err
+				return fmt.Errorf("run %v on db1 err=%v", sql, err)
 			}
 			r2, err := runExplain(db2, sql)
 			if err != nil {
-				return err
+				return fmt.Errorf("run %v on db2 err=%v", sql, err)
 			}
 			p1, err := plan.Parse(db1.opt.version, sql, r1)
 			if err != nil {
-				return err
+				return fmt.Errorf("parse %v err=%v", sql, err)
 			}
 			p2, err := plan.Parse(db2.opt.version, sql, r2)
 			if err != nil {
-				return err
+				return fmt.Errorf("parse %v err=%v", sql, err)
 			}
-			if _, same := plan.Compare(p1, p2); !same {
-				fmt.Println(">>>> ", sql)
+			if reason, same := plan.Compare(p1, p2); !same {
+				fmt.Println("=====================================================================")
+				fmt.Println("SQL: ", sql)
+				fmt.Println("Plan1: ")
+				fmt.Println(p1.Format())
+				fmt.Println("Plan2: ")
+				fmt.Println(p2.Format())
+				fmt.Println("Reason: ", reason)
+				fmt.Println("=====================================================================")
 			}
 		} else {
 			return fmt.Errorf("unexpected SQL %v", sql)

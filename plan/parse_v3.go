@@ -79,7 +79,7 @@ func parseLineV3(cols []string, children []Operator) (Operator, error) {
 }
 
 func adjustJoinChildrenV3(info string, children []Operator) error {
-	// make children[0] is the outer child(build side)
+	// make children[0] is the build side
 	idx := strings.Index(info, "inner:")
 	if idx == -1 {
 		return errors.New("cannot find inner side")
@@ -89,7 +89,7 @@ func adjustJoinChildrenV3(info string, children []Operator) error {
 		ed++
 	}
 	innerName := info[idx:ed]
-	if children[0].ID() == innerName {
+	if children[0].ID() != innerName {
 		children[0], children[1] = children[1], children[0]
 	}
 	return nil
