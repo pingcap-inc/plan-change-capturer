@@ -83,7 +83,6 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string) error {
 			}
 			if reason, same := plan.Compare(p1, p2); !same {
 				fmt.Println("=====================================================================")
-				fmt.Println("SQL: ", sql)
 				fmt.Println("Plan1: ")
 				fmt.Println(p1.Format())
 				fmt.Println("Plan2: ")

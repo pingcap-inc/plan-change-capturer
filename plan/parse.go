@@ -223,5 +223,8 @@ func MatchOpType(opID string) OpType {
 	if strings.Contains(x, "projection") {
 		return OpTypeProjection
 	}
+	if strings.Contains(x, "point") {
+		return OpTypePointGet
+	}
 	return OpTypeUnknown
 }

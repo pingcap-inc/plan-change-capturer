@@ -32,3 +32,15 @@ func (s *parseTestSuite) TestParseV4(c *C) {
 	c.Assert(p.Root.Children()[0].ID(), Equals, "IndexReader_52(Build)")
 	c.Assert(p.Root.Children()[0].Children()[0].ID(), Equals, "IndexFullScan_51")
 }
+
+func (s *parseTestSuite) TestParsePointGetV4(c *C) {
+	result := `
++-------------------+---------+------+---------------+----------------------------------------------+
+| id                | estRows | task | access object | operator info                                |
++-------------------+---------+------+---------------+----------------------------------------------+
+| Batch_Point_Get_1 | 3.00    | root | table:t       | handle:[3 4 5], keep order:false, desc:false |
++-------------------+---------+------+---------------+----------------------------------------------+
+`
+	_, err := ParseText("", result)
+	c.Assert(err, IsNil)
+}

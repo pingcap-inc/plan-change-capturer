@@ -27,6 +27,7 @@ const (
 	OpTypeIndexReader
 	OpTypeIndexScan
 	OpTypeIndexLookup
+	OpTypePointGet
 )
 
 func OpTypeIsJoin(opType OpType) bool {
@@ -190,4 +191,9 @@ type SelectionOp struct {
 
 type ProjectionOp struct {
 	BaseOp
+}
+
+type PointGetOp struct {
+	BaseOp
+	Batch bool
 }
