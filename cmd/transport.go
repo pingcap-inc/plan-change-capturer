@@ -38,7 +38,7 @@ func newDBHandler(opt tidbAccessOptions) (*tidbHandler, error) {
 	}
 	db, err := sql.Open("mysql", dns)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("connect to database dns:%v, error: %v", dns, err)
 	}
 	return &tidbHandler{opt, db}, nil
 }
@@ -61,31 +61,35 @@ func newTransportCmd() *cobra.Command {
 				opt.dir = tmpPathDir()
 			}
 			if err := os.MkdirAll(opt.dir, 0776); err != nil {
-				return err
+				return fmt.Errorf("create destination directory error: %v", err)
 			}
 			if opt.src.addr != "" {
+				fmt.Println("begin to export schemas and statistics information from source databases")
 				src, err := newDBHandler(opt.src)
 				if err != nil {
-					return err
+					return fmt.Errorf("create source DB handler error: %v", err)
 				}
 				if err = exportSchemas(src, opt.dbs, opt.dir); err != nil {
-					return err
+					return fmt.Errorf("export schemas error: %v", err)
 				}
 				if err = exportStats(src, opt.dbs, opt.dir); err != nil {
-					return err
+					return fmt.Errorf("export statistics information error: %v", err)
 				}
+				fmt.Println("export schemas and statistics information from source databases successfully")
 			}
 			if opt.dst.addr != "" {
+				fmt.Println("begin to import schemas and statistics information into destination databases")
 				dst, err := newDBHandler(opt.dst)
 				if err != nil {
-					return err
+					return fmt.Errorf("create destination DB handler error: %v", err)
 				}
 				if err = importSchemas(dst, opt.dbs, opt.dir); err != nil {
-					return err
+					return fmt.Errorf("import schemas error: %v", err)
 				}
 				if err = importStats(dst, opt.dbs, opt.dir); err != nil {
-					return err
+					return fmt.Errorf("import statistics information error: %v", err)
 				}
+				fmt.Println("import schemas and statistics information into destination databases successfully")
 			}
 			return nil
 		},
@@ -108,7 +112,7 @@ func newTransportCmd() *cobra.Command {
 func exportSchemas(h *tidbHandler, dbs []string, dir string) error {
 	for _, db := range dbs {
 		if err := exportDBSchemas(h, db, dir); err != nil {
-			return err
+			return fmt.Errorf("export DB: %v schemas to %v error: %v", db, dir, db)
 		}
 	}
 	return nil
@@ -117,7 +121,7 @@ func exportSchemas(h *tidbHandler, dbs []string, dir string) error {
 func exportDBSchemas(h *tidbHandler, db, dir string) error {
 	tables, err := getTables(h, db)
 	if err != nil {
-		return err
+		return fmt.Errorf("get DB: %v table information error: %v", db, err)
 	}
 	path := filepath.Join(dir, fmt.Sprintf("schema-%v.sql", db))
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
@@ -130,20 +134,20 @@ func exportDBSchemas(h *tidbHandler, db, dir string) error {
 		showSQL := fmt.Sprintf("show create table %v.%v", db, t)
 		rows, err := h.db.Query(showSQL)
 		if err != nil {
-			return err
+			return fmt.Errorf("exec SQL: %v error: %v", showSQL, err)
 		}
 		rows.Next()
 		var table, createSQL string
 		if err := rows.Scan(&table, &createSQL); err != nil {
 			rows.Close()
-			return err
+			return fmt.Errorf("scan rows error: %v", err)
 		}
 		if !strings.HasSuffix(createSQL, ";") {
 			createSQL += ";"
 		}
 		if _, err := buf.WriteString(createSQL + "\n\n"); err != nil {
 			rows.Close()
-			return err
+			return fmt.Errorf("write buffer error: %v", err)
 		}
 		if err := rows.Close(); err != nil {
 			return err
@@ -157,11 +161,11 @@ func exportStats(h *tidbHandler, dbs []string, dir string) error {
 	for _, db := range dbs {
 		tables, err := getTables(h, db)
 		if err != nil {
-			return err
+			return fmt.Errorf("get DB: %v table information error: %v", db, err)
 		}
 		for _, t := range tables {
 			if err := exportTableStats(h, db, t, dir); err != nil {
-				return err
+				return fmt.Errorf("export DB: %v table: %v statistics to %v error: %v", db, t, dir, err)
 			}
 		}
 	}
@@ -172,7 +176,7 @@ func exportTableStats(h *tidbHandler, db, table, dir string) error {
 	addr := fmt.Sprintf("http://%v:%v/stats/dump/%v/%v", h.opt.addr, h.opt.statusPort, db, table)
 	resp, err := http.Get(addr)
 	if err != nil {
-		return err
+		return fmt.Errorf("request URL: %v error: %v", addr, err)
 	}
 	path := filepath.Join(dir, fmt.Sprintf("stats-%v-%v.json", db, table))
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
@@ -194,10 +198,10 @@ func exportTableStats(h *tidbHandler, db, table, dir string) error {
 func importSchemas(h *tidbHandler, dbs []string, dir string) error {
 	for _, db := range dbs {
 		if _, err := h.db.Exec(fmt.Sprintf("create database if not exists %v", db)); err != nil {
-			return err
+			return fmt.Errorf("create DB: %v error: %v", db, err)
 		}
 		if _, err := h.db.Exec("use " + db); err != nil {
-			return err
+			return fmt.Errorf("switch to DB: %v error: %v", db, err)
 		}
 		path := filepath.Join(dir, fmt.Sprintf("schema-%v.sql", db))
 		content, err := ioutil.ReadFile(path)
@@ -208,7 +212,7 @@ func importSchemas(h *tidbHandler, dbs []string, dir string) error {
 		for _, sql := range sqls {
 			sql = strings.TrimSpace(sql)
 			if _, err := h.db.Exec(sql); err != nil {
-				return err
+				return fmt.Errorf("execute SQL: %v from %v error: %v", sql, path, err)
 			}
 		}
 		fmt.Printf("import schemas from %v into %v:%v/%v\n", path, h.opt.addr, h.opt.port, db)
@@ -236,18 +240,18 @@ func importStats(h *tidbHandler, dbs []string, dir string) error {
 func getTables(h *tidbHandler, db string) ([]string, error) {
 	_, err := h.db.Exec("use " + db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("switch to DB: %v error: %v", db, err)
 	}
 	rows, err := h.db.Query("show tables")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("execute show tables error: %v", err)
 	}
 	defer rows.Close()
 	tables := make([]string, 0, 8)
 	for rows.Next() {
 		var table string
 		if err := rows.Scan(&table); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan rows error: %v", err)
 		}
 		tables = append(tables, table)
 	}
