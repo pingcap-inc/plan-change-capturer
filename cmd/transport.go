@@ -131,7 +131,7 @@ func exportDBSchemas(h *tidbHandler, db, dir string) error {
 	defer file.Close()
 	buf := bufio.NewWriter(file)
 	for _, t := range tables {
-		showSQL := fmt.Sprintf("show create table %v.%v", db, t)
+		showSQL := fmt.Sprintf("show create table `%v`.`%v`", db, t)
 		rows, err := h.db.Query(showSQL)
 		if err != nil {
 			return fmt.Errorf("exec SQL: %v error: %v", showSQL, err)
@@ -197,7 +197,7 @@ func exportTableStats(h *tidbHandler, db, table, dir string) error {
 
 func importSchemas(h *tidbHandler, dbs []string, dir string) error {
 	for _, db := range dbs {
-		if _, err := h.db.Exec(fmt.Sprintf("create database if not exists %v", db)); err != nil {
+		if _, err := h.db.Exec(fmt.Sprintf("create database if not exists `%v`", db)); err != nil {
 			return fmt.Errorf("create DB: %v error: %v", db, err)
 		}
 		if _, err := h.db.Exec("use " + db); err != nil {
