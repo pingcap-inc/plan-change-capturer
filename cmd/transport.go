@@ -112,7 +112,7 @@ func newTransportCmd() *cobra.Command {
 func exportSchemas(h *tidbHandler, dbs []string, dir string) error {
 	for _, db := range dbs {
 		if err := exportDBSchemas(h, db, dir); err != nil {
-			return fmt.Errorf("export DB: %v schemas to %v error: %v", db, dir, db)
+			return fmt.Errorf("export DB: %v schemas to %v error: %v", db, dir, err)
 		}
 	}
 	return nil
