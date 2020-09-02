@@ -24,7 +24,7 @@ var explainV3Result = `
 `
 
 func (s *parseTestSuite) TestParseV3(c *C) {
-	p, err := ParseText(explainV3SQL, explainV3Result)
+	p, err := ParseText(explainV3SQL, explainV3Result, V3)
 	c.Assert(err, IsNil)
 	c.Assert(p.SQL, Equals, explainV3SQL)
 	c.Assert(p.Root.ID(), Equals, "HashLeftJoin_17")

@@ -7,30 +7,28 @@ import (
 	"github.com/pingcap/errors"
 )
 
-func ParseText(sql, explainText string) (Plan, error) {
+func ParseText(sql, explainText, version string) (Plan, error) {
 	explainLines, err := trimAndSplitExplainResult(explainText)
 	if err != nil {
 		return Plan{}, err
 	}
 	sql = strings.TrimSpace(sql)
 	sql = strings.TrimSuffix(sql, ";")
-	ver := identifyVersion(explainLines[1])
+	ver := formatVersion(version)
 	rows := splitRows(explainLines[3 : len(explainLines)-1])
 	return Parse(ver, sql, rows)
 }
 
 func Parse(version, sql string, explainRows [][]string) (Plan, error) {
-	ver := matchVersion(version)
-	if ver == VUnknown {
-		return Plan{}, fmt.Errorf("unknown version %v", version)
-	}
-	switch ver {
+	switch version {
+	case V2:
+		return ParseV2(sql, explainRows)
 	case V3:
 		return ParseV3(sql, explainRows)
 	case V4:
 		return ParseV4(sql, explainRows)
 	}
-	return Plan{}, errors.Errorf("unsupported TiDB version %v", ver)
+	return Plan{}, errors.Errorf("unsupported TiDB version %v", version)
 }
 
 func Compare(p1, p2 Plan) (reason string, same bool) {
@@ -106,21 +104,14 @@ func isSeparateLine(line string) bool {
 	return true
 }
 
-func matchVersion(version string) string {
-	v := strings.ToLower(version)
-	if strings.Contains(v, "v3") {
+func formatVersion(version string) string {
+	version = strings.ToLower(version)
+	if strings.HasPrefix(version, V2) {
+		return V2
+	} else if strings.HasPrefix(version, V3) {
 		return V3
-	} else if strings.Contains(v, "v4") {
-		return V4
 	}
-	return VUnknown
-}
-
-func identifyVersion(header string) string {
-	if strings.Contains(header, "estRows") {
-		return V4
-	}
-	return V3
+	return V4
 }
 
 func splitRows(rows []string) [][]string {
@@ -174,6 +165,15 @@ func splitKVs(kvStr string) map[string]string {
 		}
 	}
 	return kvMap
+}
+
+func extractIndexColumns(indexStr string) string {
+	be := strings.Index(indexStr, "(")
+	ed := strings.Index(indexStr, ")")
+	if be != -1 && ed != -1 {
+		indexStr = indexStr[be+1 : ed]
+	}
+	return indexStr
 }
 
 func parseTaskType(taskStr string) TaskType {

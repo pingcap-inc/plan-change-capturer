@@ -115,9 +115,9 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 	}
 
 	for _, ca := range cases {
-		planv3, err := ParseText(ca.sql, ca.v3)
+		planv3, err := ParseText(ca.sql, ca.v3, V3)
 		c.Assert(err, IsNil)
-		planv4, err := ParseText(ca.sql, ca.v4)
+		planv4, err := ParseText(ca.sql, ca.v4, V4)
 		c.Assert(err, IsNil)
 		_, same := Compare(planv3, planv4)
 		c.Assert(same, IsTrue)
@@ -190,9 +190,9 @@ func (s *parseTestSuite) TestCompareNotSame(c *C) {
 	}
 
 	for _, ca := range cases {
-		planv3, err := ParseText(ca.sql, ca.v3)
+		planv3, err := ParseText(ca.sql, ca.v3, V3)
 		c.Assert(err, IsNil)
-		planv4, err := ParseText(ca.sql, ca.v4)
+		planv4, err := ParseText(ca.sql, ca.v4, V4)
 		c.Assert(err, IsNil)
 		_, same := Compare(planv3, planv4)
 		c.Assert(same, IsFalse)

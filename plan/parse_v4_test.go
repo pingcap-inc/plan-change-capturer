@@ -24,7 +24,7 @@ var explainV4Result = `
 `
 
 func (s *parseTestSuite) TestParseV4(c *C) {
-	p, err := ParseText(explainV4SQL, explainV4Result)
+	p, err := ParseText(explainV4SQL, explainV4Result, V4)
 	c.Assert(err, IsNil)
 	c.Assert(p.SQL, Equals, explainV4SQL)
 	c.Assert(p.Root.ID(), Equals, "HashJoin_24")
@@ -41,6 +41,6 @@ func (s *parseTestSuite) TestParsePointGetV4(c *C) {
 | Batch_Point_Get_1 | 3.00    | root | table:t       | handle:[3 4 5], keep order:false, desc:false |
 +-------------------+---------+------+---------------+----------------------------------------------+
 `
-	_, err := ParseText("", result)
+	_, err := ParseText("", result, V4)
 	c.Assert(err, IsNil)
 }
