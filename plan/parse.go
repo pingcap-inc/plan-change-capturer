@@ -20,7 +20,7 @@ func ParseText(sql, explainText, version string) (Plan, error) {
 }
 
 func Parse(version, sql string, explainRows [][]string) (Plan, error) {
-	switch version {
+	switch formatVersion(version) {
 	case V2:
 		return ParseV2(sql, explainRows)
 	case V3:
