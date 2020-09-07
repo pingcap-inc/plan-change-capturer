@@ -101,18 +101,18 @@ func newTransportCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&opt.src.addr, "srcaddr", "127.0.0.1", "")
+	cmd.Flags().StringVar(&opt.src.addr, "srcaddr", "", "")
 	cmd.Flags().StringVar(&opt.src.port, "srcport", "4000", "")
 	cmd.Flags().StringVar(&opt.src.statusPort, "srcstatusport", "10080", "")
 	cmd.Flags().StringVar(&opt.src.user, "srcuser", "", "")
 	cmd.Flags().StringVar(&opt.src.password, "srcpassword", "", "")
-	cmd.Flags().StringVar(&opt.dst.addr, "dstaddr", "127.0.0.1", "")
+	cmd.Flags().StringVar(&opt.dst.addr, "dstaddr", "", "")
 	cmd.Flags().StringVar(&opt.dst.port, "dstport", "4000", "")
 	cmd.Flags().StringVar(&opt.dst.statusPort, "dststatusport", "10080", "")
 	cmd.Flags().StringVar(&opt.dst.user, "dstuser", "", "")
 	cmd.Flags().StringVar(&opt.dst.password, "dstpassword", "", "")
 	cmd.Flags().StringVar(&opt.dir, "dir", "", "destination directory to store exported schemas and statistics")
-	cmd.Flags().StringSliceVar(&opt.dbs, "dbs", nil, "databases to export")
+	cmd.Flags().StringSliceVar(&opt.dbs, "dbs", nil, "databases to export or import")
 	cmd.Flags().StringSliceVar(&opt.ignoreTables, "ignore-tables", nil, "tables to ignore when exporting")
 	return cmd
 }
