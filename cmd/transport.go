@@ -228,11 +228,11 @@ func importSchemas(h *tidbHandler, dbs []string, dir string) error {
 		path := filepath.Join(dir, fmt.Sprintf("schema-%v.sql", db))
 		content, err := ioutil.ReadFile(path)
 		if err != nil {
-			return err
+			return fmt.Errorf("read file %v err: %v", path, err)
 		}
 		tableSchemas := make(map[string]string)
 		if err := json.Unmarshal(content, &tableSchemas); err != nil {
-			return err
+			return fmt.Errorf("unmarshal file %v err: %v", path, err)
 		}
 
 		for _, sql := range tableSchemas {
