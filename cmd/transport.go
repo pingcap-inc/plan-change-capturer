@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -131,12 +132,7 @@ func exportDBSchemas(h *tidbHandler, db, dir string, ignoreTables map[string]str
 		return fmt.Errorf("get DB: %v table information error: %v", db, err)
 	}
 	path := filepath.Join(dir, fmt.Sprintf("schema-%v.sql", db))
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	buf := bufio.NewWriter(file)
+	tableSchemas := make(map[string]string)
 	for _, t := range tables {
 		if _, ok := ignoreTables[ strings.ToLower(t)]; ok {
 			fmt.Printf("ignore table: %v\n", t)
@@ -154,19 +150,29 @@ func exportDBSchemas(h *tidbHandler, db, dir string, ignoreTables map[string]str
 			rows.Close()
 			return fmt.Errorf("scan rows error: %v", err)
 		}
-		if !strings.HasSuffix(createSQL, ";") {
-			createSQL += ";"
-		}
-		if _, err := buf.WriteString(createSQL + "\n\n"); err != nil {
-			rows.Close()
-			return fmt.Errorf("write buffer error: %v", err)
-		}
+		tableSchemas[table] = createSQL
 		if err := rows.Close(); err != nil {
 			return err
 		}
 	}
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+	jsonData, err := json.MarshalIndent(tableSchemas, "", "\t")
+	if err != nil {
+		return err
+	}
+	if _, err := file.Write(jsonData); err != nil {
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+
 	fmt.Printf("export %s:%s/%s schemas into %v\n", h.opt.addr, h.opt.port, db, path)
-	return buf.Flush()
+	return nil
 }
 
 func exportStats(h *tidbHandler, dbs []string, dir string, ignoreTables map[string]struct{}) error {
@@ -224,8 +230,12 @@ func importSchemas(h *tidbHandler, dbs []string, dir string) error {
 		if err != nil {
 			return err
 		}
-		sqls := strings.Split(string(content), ";")
-		for _, sql := range sqls {
+		tableSchemas := make(map[string]string)
+		if err := json.Unmarshal(content, &tableSchemas); err != nil {
+			return err
+		}
+
+		for _, sql := range tableSchemas {
 			sql = strings.TrimSpace(sql)
 			if _, err := h.db.Exec(sql); err != nil {
 				return fmt.Errorf("execute SQL: %v from %v error: %v", sql, path, err)
