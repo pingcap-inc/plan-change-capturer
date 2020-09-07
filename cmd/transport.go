@@ -100,12 +100,12 @@ func newTransportCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&opt.src.addr, "srcaddr", "", "")
+	cmd.Flags().StringVar(&opt.src.addr, "srcaddr", "127.0.0.1", "")
 	cmd.Flags().StringVar(&opt.src.port, "srcport", "4000", "")
 	cmd.Flags().StringVar(&opt.src.statusPort, "srcstatusport", "10080", "")
 	cmd.Flags().StringVar(&opt.src.user, "srcuser", "", "")
 	cmd.Flags().StringVar(&opt.src.password, "srcpassword", "", "")
-	cmd.Flags().StringVar(&opt.dst.addr, "dstaddr", "", "")
+	cmd.Flags().StringVar(&opt.dst.addr, "dstaddr", "127.0.0.1", "")
 	cmd.Flags().StringVar(&opt.dst.port, "dstport", "4000", "")
 	cmd.Flags().StringVar(&opt.dst.statusPort, "dststatusport", "10080", "")
 	cmd.Flags().StringVar(&opt.dst.user, "dstuser", "", "")
