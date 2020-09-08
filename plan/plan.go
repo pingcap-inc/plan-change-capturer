@@ -36,6 +36,7 @@ const (
 	OpTypeLimit
 	OpTypeSort
 	OpTypeTopN
+	OpTypeTableDual
 )
 
 func OpTypeIsJoin(opType OpType) bool {
@@ -231,5 +232,9 @@ type SortOp struct {
 }
 
 type TopNOp struct {
+	BaseOp
+}
+
+type TableDual struct {
 	BaseOp
 }

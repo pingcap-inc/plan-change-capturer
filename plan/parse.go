@@ -263,5 +263,8 @@ func MatchOpType(opID string) OpType {
 	if strings.Contains(x, "topn") {
 		return OpTypeTopN
 	}
+	if strings.Contains(x, "tabledual") {
+		return OpTypeTableDual
+	}
 	return OpTypeUnknown
 }
