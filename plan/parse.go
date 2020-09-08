@@ -51,7 +51,7 @@ func Compare(p1, p2 Plan) (reason string, same bool) {
 
 func compare(op1, op2 Operator) (reason string, same bool) {
 	if op1.Type() != op2.Type() || op1.Task() != op2.Task() {
-		return fmt.Sprintf("%v and %v have different types", op1.ID(), op2.ID()), false
+		return fmt.Sprintf("different operators %v and %v", op1.ID(), op2.ID()), false
 	}
 	c1, c2 := op1.Children(), op2.Children()
 	if len(c1) != len(c2) {
@@ -63,13 +63,13 @@ func compare(op1, op2 Operator) (reason string, same bool) {
 		t1, t2 := op1.(TableScanOp), op2.(TableScanOp)
 		if t1.Table != t2.Table {
 			same = false
-			reason = fmt.Sprintf("%v:%v, %v:%v", t1.ID(), t1.Table, t2.ID(), t2.Table)
+			reason = fmt.Sprintf("different table scan %v:%v, %v:%v", t1.ID(), t1.Table, t2.ID(), t2.Table)
 		}
 	case OpTypeIndexScan:
 		t1, t2 := op1.(IndexScanOp), op2.(IndexScanOp)
 		if t1.Table != t2.Table || t1.Index != t2.Index {
 			same = false
-			reason = fmt.Sprintf("%v:%v, %v:%v", t1.ID(), t1.Table, t2.ID(), t2.Table)
+			reason = fmt.Sprintf("different index scan %v:%v, %v:%v", t1.ID(), t1.Table, t2.ID(), t2.Table)
 		}
 	}
 	if !same {
