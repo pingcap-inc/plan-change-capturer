@@ -74,6 +74,8 @@ func parseLineV3(cols []string, children []Operator) (Operator, error) {
 		return SelectionOp{base}, nil
 	case OpTypeProjection:
 		return ProjectionOp{base}, nil
+	case OpTypePointGet:
+		return PointGetOp{base, false}, nil
 	case OpTypeHashAgg:
 		return HashAggOp{base}, nil
 	case OpTypeStreamAgg:

@@ -79,6 +79,8 @@ func parseLineV2(cols []string, children []Operator) (Operator, error) {
 		return HashAggOp{base}, nil
 	case OpTypeStreamAgg:
 		return StreamAggOp{base}, nil
+	case OpTypePointGet:
+		return PointGetOp{base, false}, nil
 	case OpTypeMaxOneRow:
 		return MaxOneRowOp{base}, nil
 	case OpTypeApply:
