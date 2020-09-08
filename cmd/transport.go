@@ -41,6 +41,9 @@ func newDBHandler(opt tidbAccessOptions) (*tidbHandler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect to database dns:%v, error: %v", dns, err)
 	}
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("ping DB %v error: %v", dns, err)
+	}
 	return &tidbHandler{opt, db}, nil
 }
 
