@@ -19,7 +19,17 @@ func ParseText(sql, explainText, version string) (Plan, error) {
 	return Parse(ver, sql, rows)
 }
 
-func Parse(version, sql string, explainRows [][]string) (Plan, error) {
+func Parse(version, sql string, explainRows [][]string) (_ Plan, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			explainContent := ""
+			for _, row := range explainRows {
+				explainContent += strings.Join(row, "\t") + "\n"
+			}
+			err = fmt.Errorf("parse sql=%v ver=%v panic, explain: %v\n, stack= %v\n", sql, version, nil, r)
+		}
+	}()
+
 	switch formatVersion(version) {
 	case V2:
 		return ParseV2(sql, explainRows)
