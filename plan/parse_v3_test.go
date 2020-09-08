@@ -32,3 +32,41 @@ func (s *parseTestSuite) TestParseV3(c *C) {
 	c.Assert(p.Root.Children()[0].ID(), Equals, "HashLeftJoin_24")
 	c.Assert(p.Root.Children()[0].Children()[0].ID(), Equals, "TableReader_31")
 }
+
+func (s *parseTestSuite) TestParseAggV3(c *C) {
+	p1 := `
++--------------------------+----------+------+--------------------------------------------------------------------+
+| id                       | count    | task | operator info                                                      |
++--------------------------+----------+------+--------------------------------------------------------------------+
+| StreamAgg_9              | 8000.00  | root | group by:col_1, funcs:sum(col_0)                                   |
+| └─Projection_19          | 10000.00 | root | cast(test.t.b), test.t.a                                           |
+|   └─Projection_18        | 10000.00 | root | test.t.a, test.t.b                                                 |
+|     └─IndexLookUp_17     | 10000.00 | root |                                                                    |
+|       ├─IndexScan_15     | 10000.00 | cop  | table:t, index:a, range:[NULL,+inf], keep order:true, stats:pseudo |
+|       └─TableScan_16     | 10000.00 | cop  | table:t, keep order:false, stats:pseudo                            |
++--------------------------+----------+------+--------------------------------------------------------------------+
+`
+	p, err := ParseText("", p1, V3)
+	c.Assert(err, IsNil)
+	c.Assert(p.Root.ID(), Equals, "StreamAgg_9")
+	c.Assert(p.Root.Type(), Equals, OpTypeStreamAgg)
+	c.Assert(p.Root.Children()[0].Children()[0].Children()[0].ID(), Equals, "IndexLookUp_17")
+	c.Assert(p.Root.Children()[0].Children()[0].Children()[0].Type(), Equals, OpTypeIndexLookup)
+
+	p2 := `
++-----------------------+----------+------+------------------------------------------------------------+
+| id                    | count    | task | operator info                                              |
++-----------------------+----------+------+------------------------------------------------------------+
+| HashAgg_9             | 8000.00  | root | group by:col_1, funcs:sum(col_0)                           |
+| └─TableReader_10      | 8000.00  | root | data:HashAgg_5                                             |
+|   └─HashAgg_5         | 8000.00  | cop  | group by:test.t.b, funcs:sum(test.t.a)                     |
+|     └─TableScan_8     | 10000.00 | cop  | table:t, range:[-inf,+inf], keep order:false, stats:pseudo |
++-----------------------+----------+------+------------------------------------------------------------+
+`
+	p, err = ParseText("", p2, V3)
+	c.Assert(err, IsNil)
+	c.Assert(p.Root.ID(), Equals, "HashAgg_9")
+	c.Assert(p.Root.Type(), Equals, OpTypeHashAgg)
+	c.Assert(p.Root.Children()[0].Children()[0].ID(), Equals, "HashAgg_5")
+	c.Assert(p.Root.Children()[0].Children()[0].Type(), Equals, OpTypeHashAgg)
+}

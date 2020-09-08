@@ -21,6 +21,8 @@ const (
 	OpTypeHashJoin
 	OpTypeIndexJoin
 	OpTypeMergeJoin
+	OpTypeHashAgg
+	OpTypeStreamAgg
 	OpTypeSelection
 	OpTypeProjection
 	OpTypeTableReader
@@ -197,4 +199,12 @@ type ProjectionOp struct {
 type PointGetOp struct {
 	BaseOp
 	Batch bool
+}
+
+type StreamAggOp struct {
+	BaseOp
+}
+
+type HashAggOp struct {
+	BaseOp
 }

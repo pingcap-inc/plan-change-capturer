@@ -44,3 +44,40 @@ func (s *parseTestSuite) TestParsePointGetV4(c *C) {
 	_, err := ParseText("", result, V4)
 	c.Assert(err, IsNil)
 }
+
+func (s *parseTestSuite) TestParseAggV4(c *C) {
+	p1 := `
++---------------------------+----------+-----------+---------------+--------------------------------------------------+
+| id                        | estRows  | task      | access object | operator info                                    |
++---------------------------+----------+-----------+---------------+--------------------------------------------------+
+| HashAgg_9                 | 8000.00  | root      |               | group by:test.t.b, funcs:sum(Column#5)->Column#4 |
+| └─TableReader_10          | 8000.00  | root      |               | data:HashAgg_5                                   |
+|   └─HashAgg_5             | 8000.00  | cop[tikv] |               | group by:test.t.b, funcs:sum(test.t.a)->Column#5 |
+|     └─TableFullScan_8     | 10000.00 | cop[tikv] | table:t       | keep order:false, stats:pseudo                   |
++---------------------------+----------+-----------+---------------+--------------------------------------------------+
+`
+	p, err := ParseText("", p1, V4)
+	c.Assert(err, IsNil)
+	c.Assert(p.Root.ID(), Equals, "HashAgg_9")
+	c.Assert(p.Root.Type(), Equals, OpTypeHashAgg)
+	c.Assert(p.Root.Children()[0].Children()[0].ID(), Equals, "HashAgg_5")
+	c.Assert(p.Root.Children()[0].Children()[0].Type(), Equals, OpTypeHashAgg)
+
+	p2 := `
++--------------------------------------+----------+-----------+---------------------+-----------------------------------------------------------+
+| id                                   | estRows  | task      | access object       | operator info                                             |
++--------------------------------------+----------+-----------+---------------------+-----------------------------------------------------------+
+| StreamAgg_9                          | 8000.00  | root      |                     | group by:Column#12, funcs:sum(Column#11)->Column#4        |
+| └─Projection_28                      | 10000.00 | root      |                     | cast(test.t.b, decimal(65,0) BINARY)->Column#11, test.t.a |
+|   └─Projection_16                    | 10000.00 | root      |                     | test.t.a, test.t.b                                        |
+|     └─IndexLookUp_15                 | 10000.00 | root      |                     |                                                           |
+|       ├─IndexFullScan_13(Build)      | 10000.00 | cop[tikv] | table:t, index:a(a) | keep order:true, stats:pseudo                             |
+|       └─TableRowIDScan_14(Probe)     | 10000.00 | cop[tikv] | table:t             | keep order:false, stats:pseudo                            |
++--------------------------------------+----------+-----------+---------------------+-----------------------------------------------------------+
+`
+	p, err = ParseText("", p2, V4)
+	c.Assert(err, IsNil)
+	c.Assert(p.Root.ID(), Equals, "StreamAgg_9")
+	c.Assert(p.Root.Type(), Equals, OpTypeStreamAgg)
+	c.Assert(p.Root.Children()[0].Children()[0].Children()[0].ID(), Equals, "IndexLookUp_15")
+}

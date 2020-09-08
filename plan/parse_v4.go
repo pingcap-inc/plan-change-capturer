@@ -74,6 +74,10 @@ func parseRowV4(cols []string, children []Operator) (Operator, error) {
 		return ProjectionOp{base}, nil
 	case OpTypePointGet:
 		return PointGetOp{base, false}, nil
+	case OpTypeHashAgg:
+		return HashAggOp{base}, nil
+	case OpTypeStreamAgg:
+		return StreamAggOp{base}, nil
 	}
 	return nil, errors.New("unknown operator type")
 }

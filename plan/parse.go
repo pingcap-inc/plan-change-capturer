@@ -189,6 +189,14 @@ func parseTaskType(taskStr string) TaskType {
 
 func MatchOpType(opID string) OpType {
 	x := strings.ToLower(opID)
+	if strings.Contains(x, "agg") {
+		if strings.Contains(x, "hash") {
+			return OpTypeHashAgg
+		} else if strings.Contains(x, "stream") {
+			return OpTypeStreamAgg
+		}
+		return OpTypeUnknown
+	}
 	if strings.Contains(x, "join") {
 		if strings.Contains(x, "hash") {
 			return OpTypeHashJoin

@@ -74,6 +74,10 @@ func parseLineV3(cols []string, children []Operator) (Operator, error) {
 		return SelectionOp{base}, nil
 	case OpTypeProjection:
 		return ProjectionOp{base}, nil
+	case OpTypeHashAgg:
+		return HashAggOp{base}, nil
+	case OpTypeStreamAgg:
+		return StreamAggOp{base}, nil
 	}
 	return nil, errors.New("unknown operator type")
 }
