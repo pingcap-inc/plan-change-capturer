@@ -244,5 +244,11 @@ func MatchOpType(opID string) OpType {
 	if strings.Contains(x, "point") {
 		return OpTypePointGet
 	}
+	if strings.Contains(x, "maxonerow") {
+		return OpTypeMaxOneRow
+	}
+	if strings.Contains(x, "apply") {
+		return OpTypeApply
+	}
 	return OpTypeUnknown
 }

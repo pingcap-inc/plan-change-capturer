@@ -79,8 +79,12 @@ func parseLineV2(cols []string, children []Operator) (Operator, error) {
 		return HashAggOp{base}, nil
 	case OpTypeStreamAgg:
 		return StreamAggOp{base}, nil
+	case OpTypeMaxOneRow:
+		return MaxOneRowOp{base}, nil
+	case OpTypeApply:
+		return ApplyOp{base}, nil
 	}
-	return nil, errors.New("unknown operator type")
+	return nil, errors.Errorf("unknown operator type %v", opID)
 }
 
 func adjustJoinChildrenV2(info string, children []Operator) error {

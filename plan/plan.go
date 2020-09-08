@@ -31,6 +31,8 @@ const (
 	OpTypeIndexScan
 	OpTypeIndexLookup
 	OpTypePointGet
+	OpTypeMaxOneRow
+	OpTypeApply
 )
 
 func OpTypeIsJoin(opType OpType) bool {
@@ -206,5 +208,13 @@ type StreamAggOp struct {
 }
 
 type HashAggOp struct {
+	BaseOp
+}
+
+type MaxOneRowOp struct {
+	BaseOp
+}
+
+type ApplyOp struct {
 	BaseOp
 }
