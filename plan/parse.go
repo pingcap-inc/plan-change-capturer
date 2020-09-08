@@ -150,6 +150,9 @@ func findChildRowNo(rows [][]string, parentRowNo, idColNo int) []int {
 	childRowNo := make([]int, 0, 2)
 	for i := parentRowNo + 1; i < len(rows); i++ {
 		field := rows[i][idColNo]
+		if col >= len([]rune(field)) {
+			break
+		}
 		c := []rune(field)[col]
 		if c == '├' || c == '└' {
 			childRowNo = append(childRowNo, i)
