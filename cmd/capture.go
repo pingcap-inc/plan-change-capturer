@@ -120,10 +120,13 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string) er
 				fmt.Println("=====================================================================")
 				fmt.Println("SQL: ")
 				fmt.Println(sql)
+				fmt.Println()
 				fmt.Println("Plan1: ")
 				fmt.Println(plan.FormatExplainRows(r1))
+				fmt.Println()
 				fmt.Println("Plan2: ")
 				fmt.Println(plan.FormatExplainRows(r2))
+				fmt.Println()
 				fmt.Println("Reason: ", reason)
 				fmt.Println("=====================================================================")
 			}
