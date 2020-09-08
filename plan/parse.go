@@ -26,7 +26,7 @@ func Parse(version, sql string, explainRows [][]string) (_ Plan, err error) {
 			for _, row := range explainRows {
 				explainContent += strings.Join(row, "\t") + "\n"
 			}
-			err = fmt.Errorf("parse sql=%v ver=%v panic, explain: %v\n, stack= %v\n", sql, version, nil, r)
+			err = fmt.Errorf("parse sql=%v ver=%v panic\n, explain: %v\n, stack= %v\n", sql, version, explainContent, r)
 		}
 	}()
 
