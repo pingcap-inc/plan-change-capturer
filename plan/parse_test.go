@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/pingcap/check"
@@ -197,4 +198,23 @@ func (s *parseTestSuite) TestCompareNotSame(c *C) {
 		_, same := Compare(planv3, planv4)
 		c.Assert(same, IsFalse)
 	}
+}
+
+func (s *parseTestSuite) TestFormatExplainRows(c *C) {
+	explainText := `
+	+--------------------------+----------+------+--------------------------------------------------------------------+
+	| id                       | count    | task | operator info                                                      |
+	+--------------------------+----------+------+--------------------------------------------------------------------+
+	| HashLeftJoin_13          | 12487.50 | root | inner join, inner:TableReader_17, equal:[eq(test.t1.a, test.t2.b)] |
+	| ├─TableReader_20         | 9990.00  | root | data:Selection_19                                                  |
+	| │ └─Selection_19         | 9990.00  | cop  | not(isnull(test.t1.a))                                             |
+	| │   └─TableScan_18       | 10000.00 | cop  | table:t2, range:[-inf,+inf], keep order:false, stats:pseudo        |
+	| └─TableReader_17         | 9990.00  | root | data:Selection_16                                                  |
+	|   └─Selection_16         | 9990.00  | cop  | not(isnull(test.t2.b))                                             |
+	|     └─TableScan_15       | 10000.00 | cop  | table:t1, range:[-inf,+inf], keep order:false, stats:pseudo        |
+	+--------------------------+----------+------+--------------------------------------------------------------------+`
+	explainLines, err := trimAndSplitExplainResult(explainText)
+	c.Assert(err, IsNil)
+	rows := splitRows(explainLines[3 : len(explainLines)-1])
+	fmt.Println(FormatExplainRows(rows))
 }

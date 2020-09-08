@@ -267,3 +267,29 @@ func MatchOpType(opID string) OpType {
 	}
 	return OpTypeUnknown
 }
+
+func FormatExplainRows(rows [][]string) string {
+	if len(rows) == 0 {
+		return ""
+	}
+	nRows := len(rows)
+	nCols := len(rows[0])
+	fmtRows := make([]string, nRows)
+	for col := 0; col < nCols; col++ {
+		lengest := 0
+		for i := 0; i < nRows; i++ {
+			if len(fmtRows[i]) > lengest {
+				lengest = len(fmtRows[i])
+			}
+		}
+		for i := 0; i < nRows; i++ {
+			gap := lengest - len(fmtRows[i])
+			fmtRows[i] += strings.Repeat(" ", gap)
+			if col != nCols-1 && col != 0 {
+				fmtRows[i] += "  |  "
+			}
+			fmtRows[i] += rows[i][col]
+		}
+	}
+	return strings.Join(fmtRows, "\n")
+}

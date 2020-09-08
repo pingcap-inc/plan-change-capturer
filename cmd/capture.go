@@ -75,12 +75,14 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string) er
 			}
 		} else if matchPrefixCaseInsensitive(sql, "explain") {
 			var p1, p2 plan.Plan
+			var r1, r2 [][]string
+			var err error
 			if errMode == "exit" {
-				r1, err := runExplain(db1, sql)
+				r1, err = runExplain(db1, sql)
 				if err != nil {
 					return fmt.Errorf("run %v on db1 err=%v", sql, err)
 				}
-				r2, err := runExplain(db2, sql)
+				r2, err = runExplain(db2, sql)
 				if err != nil {
 					return fmt.Errorf("run %v on db2 err=%v", sql, err)
 				}
@@ -93,12 +95,12 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string) er
 					return fmt.Errorf("parse %v err=%v", sql, err)
 				}
 			} else if errMode == "print" {
-				r1, err := runExplain(db1, sql)
+				r1, err = runExplain(db1, sql)
 				if err != nil {
 					fmt.Printf("run %v on db1 err=%v\n", sql, err)
 					continue
 				}
-				r2, err := runExplain(db2, sql)
+				r2, err = runExplain(db2, sql)
 				if err != nil {
 					fmt.Printf("run %v on db2 err=%v\n", sql, err)
 					continue
@@ -116,10 +118,12 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string) er
 			}
 			if reason, same := plan.Compare(p1, p2); !same {
 				fmt.Println("=====================================================================")
+				fmt.Println("SQL: ")
+				fmt.Println(sql)
 				fmt.Println("Plan1: ")
-				fmt.Println(p1.Format())
+				fmt.Println(plan.FormatExplainRows(r1))
 				fmt.Println("Plan2: ")
-				fmt.Println(p2.Format())
+				fmt.Println(plan.FormatExplainRows(r2))
 				fmt.Println("Reason: ", reason)
 				fmt.Println("=====================================================================")
 			}

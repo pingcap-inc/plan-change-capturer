@@ -75,12 +75,7 @@ type Plan struct {
 }
 
 func (p Plan) Format() string {
-	buf := bytes.NewBuffer(nil)
-	buf.WriteString("SQL: ")
-	buf.WriteString(p.SQL)
-	buf.WriteString("\n")
-	buf.WriteString(p.Root.Format(0))
-	return buf.String()
+	return p.Root.Format(0)
 }
 
 type Operator interface {
