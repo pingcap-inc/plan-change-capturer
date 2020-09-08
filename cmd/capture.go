@@ -18,11 +18,17 @@ type captureOptions struct {
 func newCaptureCmd() *cobra.Command {
 	var opt captureOptions
 	var DB string
+	var errMode string
 	cmd := &cobra.Command{
 		Use:   "capture",
 		Short: "capture plan changes",
 		Long:  `capture plan changes`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			errMode := strings.ToLower(errMode)
+			if errMode != "exit" && errMode != "print" {
+				return fmt.Errorf("invalid error mode %v", errMode)
+			}
+
 			db1, err := newDBHandler(opt.db1, DB)
 			if err != nil {
 				return err
@@ -38,7 +44,7 @@ func newCaptureCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return capturePlanChanges(db1, db2, sqls)
+			return capturePlanChanges(db1, db2, sqls, errMode)
 		},
 	}
 
@@ -54,10 +60,11 @@ func newCaptureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db2.version, "ver2", "", "")
 	cmd.Flags().StringVar(&opt.queryFile, "queryfile", "", "")
 	cmd.Flags().StringVar(&DB, "db", "mysql", "the default database used when connecting to TiDB")
+	cmd.Flags().StringVar(&errMode, "errmode", "exit", "the action to do if errors occur when running SQL, exit / print")
 	return cmd
 }
 
-func capturePlanChanges(db1, db2 *tidbHandler, sqls []string) error {
+func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string) error {
 	for _, sql := range sqls {
 		if matchPrefixCaseInsensitive(sql, "use") {
 			if _, err := db1.db.Exec(sql); err != nil {
@@ -67,21 +74,45 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string) error {
 				return err
 			}
 		} else if matchPrefixCaseInsensitive(sql, "explain") {
-			r1, err := runExplain(db1, sql)
-			if err != nil {
-				return fmt.Errorf("run %v on db1 err=%v", sql, err)
-			}
-			r2, err := runExplain(db2, sql)
-			if err != nil {
-				return fmt.Errorf("run %v on db2 err=%v", sql, err)
-			}
-			p1, err := plan.Parse(db1.opt.version, sql, r1)
-			if err != nil {
-				return fmt.Errorf("parse %v err=%v", sql, err)
-			}
-			p2, err := plan.Parse(db2.opt.version, sql, r2)
-			if err != nil {
-				return fmt.Errorf("parse %v err=%v", sql, err)
+			var p1, p2 plan.Plan
+			if errMode == "exit" {
+				r1, err := runExplain(db1, sql)
+				if err != nil {
+					return fmt.Errorf("run %v on db1 err=%v", sql, err)
+				}
+				r2, err := runExplain(db2, sql)
+				if err != nil {
+					return fmt.Errorf("run %v on db2 err=%v", sql, err)
+				}
+				p1, err = plan.Parse(db1.opt.version, sql, r1)
+				if err != nil {
+					return fmt.Errorf("parse %v err=%v", sql, err)
+				}
+				p2, err = plan.Parse(db2.opt.version, sql, r2)
+				if err != nil {
+					return fmt.Errorf("parse %v err=%v", sql, err)
+				}
+			} else if errMode == "print" {
+				r1, err := runExplain(db1, sql)
+				if err != nil {
+					fmt.Printf("run %v on db1 err=%v\n", sql, err)
+					continue
+				}
+				r2, err := runExplain(db2, sql)
+				if err != nil {
+					fmt.Printf("run %v on db2 err=%v\n", sql, err)
+					continue
+				}
+				p1, err = plan.Parse(db1.opt.version, sql, r1)
+				if err != nil {
+					fmt.Printf("parse %v err=%v\n", sql, err)
+					continue
+				}
+				p2, err = plan.Parse(db2.opt.version, sql, r2)
+				if err != nil {
+					fmt.Printf("parse %v err=%v\n", sql, err)
+					continue
+				}
 			}
 			if reason, same := plan.Compare(p1, p2); !same {
 				fmt.Println("=====================================================================")
