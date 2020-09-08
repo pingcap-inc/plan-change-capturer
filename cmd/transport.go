@@ -32,10 +32,14 @@ type tidbHandler struct {
 	db  *sql.DB
 }
 
-func newDBHandler(opt tidbAccessOptions) (*tidbHandler, error) {
-	dns := fmt.Sprintf("%s:%s@tcp(%s:%s)/mysql", opt.user, opt.password, opt.addr, opt.port)
+func newDBHandler(opt tidbAccessOptions, defaultDB string) (*tidbHandler, error) {
+	defaultDB = strings.TrimSpace(strings.ToLower(defaultDB))
+	if defaultDB == "" {
+		defaultDB = "mysql"
+	}
+	dns := fmt.Sprintf("%s:%s@tcp(%s:%s)/%v", opt.user, opt.password, opt.addr, opt.port, defaultDB)
 	if opt.password == "" {
-		dns = fmt.Sprintf("%s@tcp(%s:%s)/mysql", opt.user, opt.addr, opt.port)
+		dns = fmt.Sprintf("%s@tcp(%s:%s)/%v", opt.user, opt.addr, opt.port, defaultDB)
 	}
 	db, err := sql.Open("mysql", dns)
 	if err != nil {
@@ -70,7 +74,7 @@ func newTransportCmd() *cobra.Command {
 			}
 			if opt.src.addr != "" {
 				fmt.Println("begin to export schemas and statistics information from source databases")
-				src, err := newDBHandler(opt.src)
+				src, err := newDBHandler(opt.src, "")
 				if err != nil {
 					return fmt.Errorf("create source DB handler error: %v", err)
 				}
@@ -89,7 +93,7 @@ func newTransportCmd() *cobra.Command {
 			}
 			if opt.dst.addr != "" {
 				fmt.Println("begin to import schemas and statistics information into destination databases")
-				dst, err := newDBHandler(opt.dst)
+				dst, err := newDBHandler(opt.dst, "")
 				if err != nil {
 					return fmt.Errorf("create destination DB handler error: %v", err)
 				}

@@ -17,16 +17,17 @@ type captureOptions struct {
 
 func newCaptureCmd() *cobra.Command {
 	var opt captureOptions
+	var DB string
 	cmd := &cobra.Command{
 		Use:   "capture",
 		Short: "capture plan changes",
 		Long:  `capture plan changes`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			db1, err := newDBHandler(opt.db1)
+			db1, err := newDBHandler(opt.db1, DB)
 			if err != nil {
 				return err
 			}
-			db2, err := newDBHandler(opt.db2)
+			db2, err := newDBHandler(opt.db2, DB)
 			if err != nil {
 				return err
 			}
@@ -52,6 +53,7 @@ func newCaptureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db2.password, "password2", "", "")
 	cmd.Flags().StringVar(&opt.db2.version, "ver2", "", "")
 	cmd.Flags().StringVar(&opt.queryFile, "queryfile", "", "")
+	cmd.Flags().StringVar(&DB, "db", "mysql", "the default database used when connecting to TiDB")
 	return cmd
 }
 
