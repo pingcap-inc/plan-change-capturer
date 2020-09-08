@@ -254,5 +254,8 @@ func MatchOpType(opID string) OpType {
 	if strings.Contains(x, "apply") {
 		return OpTypeApply
 	}
+	if strings.Contains(x, "limit") {
+		return OpTypeLimit
+	}
 	return OpTypeUnknown
 }
