@@ -226,6 +226,8 @@ func MatchOpType(opID string) OpType {
 			return OpTypeTableReader
 		} else if strings.Contains(x, "scan") {
 			return OpTypeTableScan
+		} else if strings.Contains(x, "dual") {
+			return OpTypeTableDual
 		}
 		return OpTypeUnknown
 	}
@@ -262,9 +264,6 @@ func MatchOpType(opID string) OpType {
 	}
 	if strings.Contains(x, "topn") {
 		return OpTypeTopN
-	}
-	if strings.Contains(x, "tabledual") {
-		return OpTypeTableDual
 	}
 	return OpTypeUnknown
 }
