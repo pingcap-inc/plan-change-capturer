@@ -257,5 +257,11 @@ func MatchOpType(opID string) OpType {
 	if strings.Contains(x, "limit") {
 		return OpTypeLimit
 	}
+	if strings.Contains(x, "sort") {
+		return OpTypeSort
+	}
+	if strings.Contains(x, "topn") {
+		return OpTypeTopN
+	}
 	return OpTypeUnknown
 }

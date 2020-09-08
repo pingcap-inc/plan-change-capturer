@@ -87,6 +87,10 @@ func parseLineV2(cols []string, children []Operator) (Operator, error) {
 		return ApplyOp{base}, nil
 	case OpTypeLimit:
 		return LimitOp{base}, nil
+	case OpTypeSort:
+		return SortOp{base}, nil
+	case OpTypeTopN:
+		return TopNOp{base}, nil
 	}
 	return nil, errors.Errorf("unknown operator type %v", opID)
 }

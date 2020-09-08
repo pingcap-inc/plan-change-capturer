@@ -34,6 +34,8 @@ const (
 	OpTypeMaxOneRow
 	OpTypeApply
 	OpTypeLimit
+	OpTypeSort
+	OpTypeTopN
 )
 
 func OpTypeIsJoin(opType OpType) bool {
@@ -221,5 +223,13 @@ type ApplyOp struct {
 }
 
 type LimitOp struct {
+	BaseOp
+}
+
+type SortOp struct {
+	BaseOp
+}
+
+type TopNOp struct {
 	BaseOp
 }
