@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/pingcap/parser"
 	"github.com/qw4990/plan-change-capturer/plan"
 	"github.com/spf13/cobra"
 )
@@ -19,6 +20,7 @@ func newCaptureCmd() *cobra.Command {
 	var opt captureOptions
 	var DB string
 	var errMode string
+	var digestMode bool
 	cmd := &cobra.Command{
 		Use:   "capture",
 		Short: "capture plan changes",
@@ -44,7 +46,7 @@ func newCaptureCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return capturePlanChanges(db1, db2, sqls, errMode)
+			return capturePlanChanges(db1, db2, sqls, errMode, digestMode)
 		},
 	}
 
@@ -61,10 +63,12 @@ func newCaptureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.queryFile, "queryfile", "", "")
 	cmd.Flags().StringVar(&DB, "db", "mysql", "the default database used when connecting to TiDB")
 	cmd.Flags().StringVar(&errMode, "errmode", "exit", "the action to do if errors occur when running SQL, exit / print")
+	cmd.Flags().BoolVar(&digestMode, "digestmode", false, "SQLs with the same digest only be printed once if it is true")
 	return cmd
 }
 
-func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string) error {
+func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string, digestMode bool) error {
+	digests := make(map[string]struct{})
 	for _, sql := range sqls {
 		if matchPrefixCaseInsensitive(sql, "use") {
 			if _, err := db1.db.Exec(sql); err != nil {
@@ -74,6 +78,14 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string) er
 				return err
 			}
 		} else if matchPrefixCaseInsensitive(sql, "explain") {
+			if digestMode {
+				_, digest := parser.NormalizeDigest(sql)
+				if _, ok := digests[digest]; ok {
+					continue
+				}
+				digests[digest] = struct{}{}
+			}
+
 			var p1, p2 plan.Plan
 			var r1, r2 [][]string
 			var err error
