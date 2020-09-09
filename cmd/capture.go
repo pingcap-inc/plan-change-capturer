@@ -78,12 +78,11 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string, di
 				return err
 			}
 		} else if matchPrefixCaseInsensitive(sql, "explain") {
+			_, digest := parser.NormalizeDigest(sql)
 			if digestMode {
-				_, digest := parser.NormalizeDigest(sql)
 				if _, ok := digests[digest]; ok {
 					continue
 				}
-				digests[digest] = struct{}{}
 			}
 
 			var p1, p2 plan.Plan
@@ -141,6 +140,10 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, errMode string, di
 				fmt.Println()
 				fmt.Println("Reason: ", reason)
 				fmt.Println("=====================================================================")
+				
+				if digestMode {
+					digests[digest] = struct{}{}
+				}
 			}
 		} else {
 			return fmt.Errorf("unexpected SQL %v", sql)
