@@ -24,4 +24,5 @@ func init() {
 	rootCmd.AddCommand(newVersionCmd())
 	rootCmd.AddCommand(newTransportCmd())
 	rootCmd.AddCommand(newCaptureCmd())
+	rootCmd.AddCommand(newQueryCmd())
 }
