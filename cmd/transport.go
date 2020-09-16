@@ -56,6 +56,7 @@ type transportOptions struct {
 	dst          tidbAccessOptions
 	dir          string
 	dbs          []string
+	tables       []string
 	ignoreTables []string
 }
 
@@ -79,14 +80,18 @@ func newTransportCmd() *cobra.Command {
 					return fmt.Errorf("create source DB handler error: %v", err)
 				}
 
+				tablesMap := make(map[string]struct{})
+				for _, t := range opt.tables {
+					tablesMap[t] = struct{}{}
+				}
 				ignoreTablesMap := make(map[string]struct{})
 				for _, t := range opt.ignoreTables {
 					ignoreTablesMap[t] = struct{}{}
 				}
-				if err = exportSchemas(src, opt.dbs, opt.dir, ignoreTablesMap); err != nil {
+				if err = exportSchemas(src, opt.dbs, opt.dir, tablesMap, ignoreTablesMap); err != nil {
 					return fmt.Errorf("export schemas error: %v", err)
 				}
-				if err = exportStats(src, opt.dbs, opt.dir, ignoreTablesMap); err != nil {
+				if err = exportStats(src, opt.dbs, opt.dir, tablesMap, ignoreTablesMap); err != nil {
 					return fmt.Errorf("export statistics information error: %v", err)
 				}
 				fmt.Println("export schemas and statistics information from source databases successfully")
@@ -120,20 +125,21 @@ func newTransportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.dst.password, "dstpassword", "", "")
 	cmd.Flags().StringVar(&opt.dir, "dir", "", "destination directory to store exported schemas and statistics")
 	cmd.Flags().StringSliceVar(&opt.dbs, "dbs", nil, "databases to export or import")
+	cmd.Flags().StringSliceVar(&opt.tables, "tables", nil, "tables to export, if nil export all tables")
 	cmd.Flags().StringSliceVar(&opt.ignoreTables, "ignore-tables", nil, "tables to ignore when exporting")
 	return cmd
 }
 
-func exportSchemas(h *tidbHandler, dbs []string, dir string, ignoreTables map[string]struct{}) error {
+func exportSchemas(h *tidbHandler, dbs []string, dir string, tablesMap, ignoreTables map[string]struct{}) error {
 	for _, db := range dbs {
-		if err := exportDBSchemas(h, db, dir, ignoreTables); err != nil {
+		if err := exportDBSchemas(h, db, dir, tablesMap, ignoreTables); err != nil {
 			return fmt.Errorf("export DB: %v schemas to %v error: %v", db, dir, err)
 		}
 	}
 	return nil
 }
 
-func exportDBSchemas(h *tidbHandler, db, dir string, ignoreTables map[string]struct{}) error {
+func exportDBSchemas(h *tidbHandler, db, dir string, tablesMap, ignoreTables map[string]struct{}) error {
 	tables, err := getTables(h, db)
 	if err != nil {
 		return fmt.Errorf("get DB: %v table information error: %v", db, err)
@@ -141,9 +147,14 @@ func exportDBSchemas(h *tidbHandler, db, dir string, ignoreTables map[string]str
 	path := filepath.Join(dir, fmt.Sprintf("schema-%v.sql", db))
 	tableSchemas := make(map[string]string)
 	for _, t := range tables {
-		if _, ok := ignoreTables[ strings.ToLower(t)]; ok {
+		if _, ok := ignoreTables[strings.ToLower(t)]; ok {
 			fmt.Printf("ignore table: %v\n", t)
 			continue
+		}
+		if len(tablesMap) > 0 {
+			if _, ok := tablesMap[strings.ToLower(t)]; !ok {
+				continue
+			}
 		}
 
 		showSQL := fmt.Sprintf("show create table `%v`.`%v`", db, t)
