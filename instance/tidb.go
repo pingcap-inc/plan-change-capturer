@@ -1,91 +1,88 @@
-// Copyright 2020 PingCAP, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package instance
 
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
-	"path/filepath"
-	"strconv"
+	"strings"
+	"syscall"
+	"time"
 
-	"github.com/pingcap/tiup/pkg/repository/v0manifest"
+	"github.com/pingcap/tiup/pkg/environment"
+	"github.com/pingcap/tiup/pkg/exec"
+	"github.com/pingcap/tiup/pkg/localdata"
+	"github.com/pingcap/tiup/pkg/repository"
 	"github.com/pingcap/tiup/pkg/utils"
 )
 
-// TiDBInstance represent a running tidb-server
-type TiDBInstance struct {
-	instance
-	Process
-	enableBinlog bool
+func init() {
+	env, err := environment.InitEnv(repository.Options{})
+	if err != nil {
+		panic(fmt.Errorf("init env error: %v", err))
+	}
+	environment.SetGlobalEnv(env)
+}
+func base62Tag() string {
+	const base = 62
+	const sets = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	b := make([]byte, 0)
+	num := time.Now().UnixNano() / int64(time.Millisecond)
+	for num > 0 {
+		r := math.Mod(float64(num), float64(base))
+		num /= base
+		b = append([]byte{sets[int(r)]}, b...)
+	}
+	return string(b)
 }
 
-// NewTiDBInstance return a TiDBInstance
-func NewTiDBInstance(binPath string, dir, host, configPath string, id int, enableBinlog bool) *TiDBInstance {
-	return &TiDBInstance{
-		instance: instance{
-			BinPath:    binPath,
-			ID:         id,
-			Dir:        dir,
-			Host:       host,
-			Port:       utils.MustGetFreePort(host, 4000),
-			StatusPort: utils.MustGetFreePort("0.0.0.0", 10080),
-			ConfigPath: configPath,
-		},
-		enableBinlog: enableBinlog,
+func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
+	env := environment.GlobalEnv()
+	component, version := environment.ParseCompVersion(fmt.Sprintf("tidb:%v", ver))
+	if !env.IsSupportedComponent(component) {
+		panic(fmt.Errorf("component `%s` does not support", component))
 	}
+
+	var tag string
+	instanceDir := os.Getenv(localdata.EnvNameInstanceDataDir)
+	if instanceDir == "" {
+		if tag == "" {
+			tag = base62Tag()
+		}
+		instanceDir = env.LocalPath(localdata.DataParentDir, tag)
+	}
+
+	port = utils.MustGetFreePort("127.0.0.1", 4000)
+	statusPort = utils.MustGetFreePort("127.0.0.1", 10080)
+	args := []string{fmt.Sprintf("-P=%v", port), fmt.Sprintf("-status=%v", statusPort)}
+	c, err := exec.PrepareCommand(context.Background(), "tidb", version, "", tag, instanceDir, "", args, env, true)
+	if err != nil {
+		panic(err)
+	}
+
+	p = &localdata.Process{
+		Component:   component,
+		CreatedTime: time.Now().Format(time.RFC3339),
+		Exec:        c.Args[0],
+		Args:        args,
+		Dir:         instanceDir,
+		Env:         c.Env,
+		Cmd:         c,
+	}
+	fmt.Printf("Starting component `%s`: %s\n", component, strings.Join(append([]string{p.Exec}, p.Args...), " "))
+	err = p.Cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+	if p.Cmd.Process != nil {
+		p.Pid = p.Cmd.Process.Pid
+	}
+	fmt.Printf("Start tidb:%v -P=%v -status=%v successfully\n", ver, port, statusPort)
+	return
 }
 
-// Start calls set inst.cmd and Start
-func (inst *TiDBInstance) Start(ctx context.Context, version v0manifest.Version) error {
-	if err := os.MkdirAll(inst.Dir, 0755); err != nil {
-		return err
+func StopTiDB(p *localdata.Process) {
+	if err := syscall.Kill(p.Pid, syscall.SIGKILL); err != nil {
+		panic(err)
 	}
-	args := []string{
-		"-P", strconv.Itoa(inst.Port),
-		"--store=mocktikv",
-		fmt.Sprintf("--host=%s", inst.Host),
-		fmt.Sprintf("--status=%d", inst.StatusPort),
-		fmt.Sprintf("--log-file=%s", filepath.Join(inst.Dir, "tidb.log")),
-	}
-	if inst.ConfigPath != "" {
-		args = append(args, fmt.Sprintf("--config=%s", inst.ConfigPath))
-	}
-	if inst.enableBinlog {
-		args = append(args, "--enable-binlog=true")
-	}
-
-	var err error
-	if inst.Process, err = NewComponentProcess(ctx, inst.Dir, inst.BinPath, "tidb", version, args...); err != nil {
-		return err
-	}
-	logIfErr(inst.Process.SetOutputFile(inst.LogFile()))
-
-	return inst.Process.Start()
-}
-
-// Component return the component name.
-func (inst *TiDBInstance) Component() string {
-	return "tidb"
-}
-
-// LogFile return the log file name.
-func (inst *TiDBInstance) LogFile() string {
-	return filepath.Join(inst.Dir, "tidb.log")
-}
-
-// Addr return the listen address of TiDB
-func (inst *TiDBInstance) Addr() string {
-	return fmt.Sprintf("%s:%d", advertiseHost(inst.Host), inst.Port)
 }
