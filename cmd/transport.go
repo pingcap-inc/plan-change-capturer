@@ -193,7 +193,7 @@ func exportDBSchemas(h *tidbHandler, db, dir string, tablesMap, ignoreTables map
 	return nil
 }
 
-func exportStats(h *tidbHandler, dbs []string, dir string, ignoreTables map[string]struct{}) error {
+func exportStats(h *tidbHandler, dbs []string, dir string, tablesMap, ignoreTables map[string]struct{}) error {
 	for _, db := range dbs {
 		tables, err := getTables(h, db)
 		if err != nil {
@@ -203,6 +203,11 @@ func exportStats(h *tidbHandler, dbs []string, dir string, ignoreTables map[stri
 			if _, ok := ignoreTables[strings.ToLower(t)]; ok {
 				fmt.Printf("ignore table: %v\n", t)
 				continue
+			}
+			if len(tablesMap) > 0 {
+				if _, ok := tablesMap[strings.ToLower(t)]; !ok {
+					continue
+				}
 			}
 			if err := exportTableStats(h, db, t, dir); err != nil {
 				return fmt.Errorf("export DB: %v table: %v statistics to %v error: %v", db, t, dir, err)
