@@ -22,7 +22,7 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize()
 	rootCmd.AddCommand(newVersionCmd())
-	rootCmd.AddCommand(newTransportCmd())
+	rootCmd.AddCommand(newExportCmd())
+	rootCmd.AddCommand(newImportCmd())
 	rootCmd.AddCommand(newCaptureCmd())
-	rootCmd.AddCommand(newQueryCmd())
 }
