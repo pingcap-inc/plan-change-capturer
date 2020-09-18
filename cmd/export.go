@@ -52,7 +52,15 @@ func newExportCmd() *cobra.Command {
 }
 
 func runExportStmtSummary(opt *exportOpt) error {
-	if compareVer(opt.db.version, "4.0") == -1 {
+	db, err := connectDB(opt.db, "information_schema")
+	if err != nil {
+		return fmt.Errorf("connect to DB error: %v", err)
+	}
+	ver, err := db.getVersion()
+	if err != nil {
+		return fmt.Errorf("get DB version error: %v", err)
+	}
+	if compareVer(ver, "4.0") == -1 {
 		return fmt.Errorf("TiDB:%v doesn't support statement summary", opt.db.version)
 	}
 	opt.queryFile = strings.TrimSpace(opt.queryFile)
@@ -60,15 +68,11 @@ func runExportStmtSummary(opt *exportOpt) error {
 		return fmt.Errorf("no file path to store queries")
 	}
 
-	db, err := connectDB(opt.db, "information_schema")
-	if err != nil {
-		return fmt.Errorf("connect to DB error: %v", err)
-	}
 	return exportQueriesFromStmtSummary(db, opt.queryFile)
 }
 
 func exportQueriesFromStmtSummary(db *tidbHandler, dstFile string) error {
-	rows, err := db.db.Query("SELECT QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '*select*'")
+	rows, err := db.db.Query("SELECT QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%'")
 	if err != nil {
 		return fmt.Errorf("select queries from information_schema.cluster_statements_summary_history error: %v", err)
 	}

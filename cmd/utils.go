@@ -77,6 +77,21 @@ func (db *tidbHandler) getTables(dbName string) ([]string, error) {
 	return tables, nil
 }
 
+func (db *tidbHandler) getVersion() (string, error) {
+	rows, err := db.db.Query("select version()")
+	if err != nil {
+		return "", fmt.Errorf("execute `select version()` error: %v", err)
+	}
+	defer rows.Close()
+	var ver string
+	rows.Next()
+	if err := rows.Scan(&ver); err != nil {
+		return "", fmt.Errorf("read version error: %v", err)
+	}
+	fields := strings.Split(ver, "-")
+	return fields[len(fields)-1], nil
+}
+
 func (db *tidbHandler) execute(sqls ...string) error {
 	for _, sql := range sqls {
 		if _, err := db.db.Exec(sql); err != nil {
