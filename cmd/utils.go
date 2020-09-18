@@ -59,7 +59,7 @@ func (db *tidbHandler) getDBs() ([]string, error) {
 func (db *tidbHandler) getTables(dbName string) ([]string, error) {
 	_, err := db.db.Exec("use " + dbName)
 	if err != nil {
-		return nil, fmt.Errorf("switch to DB: %v error: %v", db, err)
+		return nil, fmt.Errorf("switch to DB: %v error: %v", dbName, err)
 	}
 	rows, err := db.db.Query("show tables")
 	if err != nil {
@@ -99,6 +99,12 @@ func (db *tidbHandler) execute(sqls ...string) error {
 		}
 	}
 	return nil
+}
+
+func (db *tidbHandler) stop() {
+	if db.p != nil {
+		instance.StopTiDB(db.p)
+	}
 }
 
 func startAndConnectDB(opt tidbAccessOptions, defaultDB string) (*tidbHandler, error) {

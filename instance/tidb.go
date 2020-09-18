@@ -37,6 +37,7 @@ func base62Tag() string {
 }
 
 func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
+	fmt.Printf("Try to start tidb:%v ... \n", ver)
 	env := environment.GlobalEnv()
 	component, version := environment.ParseCompVersion(fmt.Sprintf("tidb:%v", ver))
 	if !env.IsSupportedComponent(component) {
@@ -55,6 +56,8 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 	port = utils.MustGetFreePort("127.0.0.1", 4000)
 	statusPort = utils.MustGetFreePort("127.0.0.1", 10080)
 	args := []string{fmt.Sprintf("-P=%v", port), fmt.Sprintf("-status=%v", statusPort)}
+	fmt.Println("???????????>>>>>>>>>> ", args)
+	os.Exit(0)
 	c, err := exec.PrepareCommand(context.Background(), "tidb", version, "", tag, instanceDir, "", args, env, true)
 	if err != nil {
 		panic(err)
@@ -77,7 +80,7 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 	if p.Cmd.Process != nil {
 		p.Pid = p.Cmd.Process.Pid
 	}
-	fmt.Printf("Start tidb:%v -P=%v -status=%v successfully\n", ver, port, statusPort)
+	fmt.Printf("Start tidb:%v successfully with port=%v status-port=%v\n", ver, port, statusPort)
 	return
 }
 

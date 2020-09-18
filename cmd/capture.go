@@ -17,7 +17,7 @@ type captureOpt struct {
 	queryFile  string
 	schemaDir  string
 	DB         string
-	digestMode bool
+	digestFlag bool
 	tables     []string
 }
 
@@ -41,17 +41,17 @@ func newCaptureCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&opt.db1.addr, "addr1", "", "address of the first TiDB")
-	cmd.Flags().StringVar(&opt.db1.port, "port1", "", "port of the first TiDB")
-	cmd.Flags().StringVar(&opt.db1.statusPort, "statusport1", "", "status port of the first TiDB")
+	cmd.Flags().StringVar(&opt.mode, "mode", "", "online / offline")
+	cmd.Flags().StringVar(&opt.db1.addr, "addr1", "127.0.0.1", "address of the first TiDB")
+	cmd.Flags().StringVar(&opt.db1.port, "port1", "4000", "port of the first TiDB")
+	cmd.Flags().StringVar(&opt.db1.statusPort, "status-port1", "10080", "status port of the first TiDB")
 	cmd.Flags().StringVar(&opt.db1.user, "user1", "", "user name to access the first TiDB")
 	cmd.Flags().StringVar(&opt.db1.password, "password1", "", "password to access the first TiDB")
 	cmd.Flags().StringVar(&opt.db1.version, "ver1", "", "version of the first TiDB")
 	cmd.Flags().StringVar(&opt.db2.version, "ver2", "", "version of the second TiDB")
-	cmd.Flags().StringVar(&opt.queryFile, "queryfile", "", "query file path")
-	cmd.Flags().StringVar(&opt.mode, "mode", "", "online / offline")
+	cmd.Flags().StringVar(&opt.queryFile, "query-file", "", "query file path")
 	cmd.Flags().StringVar(&opt.schemaDir, "dir", "", "dir to store schemas and stats")
-	cmd.Flags().BoolVar(&opt.digestMode, "digestmode", false, "SQLs with the same digest only be printed once if it is true")
+	cmd.Flags().BoolVar(&opt.digestFlag, "digest-flag", false, "SQLs with the same digest only be printed once if it is true")
 	cmd.Flags().StringSliceVar(&opt.tables, "tables", nil, "tables to export")
 	return cmd
 }
@@ -61,15 +61,17 @@ func runCaptureOfflineMode(opt *captureOpt) error {
 	if err != nil {
 		return fmt.Errorf("start and connect to DB1 error: %v", err)
 	}
+	defer db1.stop()
 	db2, err := startAndConnectDB(opt.db1, opt.DB)
 	if err != nil {
 		return fmt.Errorf("start and connect to DB2 error: %v", err)
 	}
+	defer db2.stop()
 	sqls, err := scanQueryFile(opt.queryFile)
 	if err != nil {
 		return err
 	}
-	return capturePlanChanges(db1, db2, sqls, opt.digestMode)
+	return capturePlanChanges(db1, db2, sqls, opt.digestFlag)
 }
 
 func runCaptureOnlineMode(opt *captureOpt) error {
@@ -81,6 +83,7 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 	if err != nil {
 		return fmt.Errorf("start and connect to DB2 error: %v", err)
 	}
+	defer db2.stop()
 
 	dir := tmpPathDir()
 	if err := os.MkdirAll(dir, 0776); err != nil {
@@ -97,10 +100,10 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 	if err != nil {
 		return err
 	}
-	return capturePlanChanges(db1, db2, sqls, opt.digestMode)
+	return capturePlanChanges(db1, db2, sqls, opt.digestFlag)
 }
 
-func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestMode bool) error {
+func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestFlag bool) error {
 	digests := make(map[string]struct{})
 	for _, sql := range sqls {
 		if matchPrefixCaseInsensitive(sql, "use") {
@@ -112,7 +115,7 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestMode bool) e
 			}
 		} else if matchPrefixCaseInsensitive(sql, "explain") {
 			_, digest := parser.NormalizeDigest(sql)
-			if digestMode {
+			if digestFlag {
 				if _, ok := digests[digest]; ok {
 					continue
 				}
@@ -155,7 +158,7 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestMode bool) e
 				fmt.Println("Reason: ", reason)
 				fmt.Println("=====================================================================")
 
-				if digestMode {
+				if digestFlag {
 					digests[digest] = struct{}{}
 				}
 			}
