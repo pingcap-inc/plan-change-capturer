@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -53,16 +54,15 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 		instanceDir = env.LocalPath(localdata.DataParentDir, tag)
 	}
 
-	port = utils.MustGetFreePort("127.0.0.1", 4000)
-	statusPort = utils.MustGetFreePort("127.0.0.1", 10080)
-	args := []string{fmt.Sprintf("-P=%v", port), fmt.Sprintf("-status=%v", statusPort)}
-	fmt.Println("???????????>>>>>>>>>> ", args)
-	os.Exit(0)
+	port = utils.MustGetFreePort("0.0.0.0", 4000)
+	statusPort = utils.MustGetFreePort("0.0.0.0", 10080)
+	args := []string{fmt.Sprintf("-P=%v", port), fmt.Sprintf("-status=%v", statusPort), fmt.Sprintf("-path=%v", tmpPathDir())}
 	c, err := exec.PrepareCommand(context.Background(), "tidb", version, "", tag, instanceDir, "", args, env, true)
 	if err != nil {
 		panic(err)
 	}
 
+	c.Stdout = new(slicer)
 	p = &localdata.Process{
 		Component:   component,
 		CreatedTime: time.Now().Format(time.RFC3339),
@@ -77,10 +77,12 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 	if err != nil {
 		panic(err)
 	}
-	if p.Cmd.Process != nil {
-		p.Pid = p.Cmd.Process.Pid
+	if p.Cmd.Process == nil {
+		panic("cannot get process")
 	}
-	fmt.Printf("Start tidb:%v successfully with port=%v status-port=%v\n", ver, port, statusPort)
+	p.Pid = p.Cmd.Process.Pid
+	time.Sleep(time.Second * 5) // wait few minutes
+	fmt.Printf("Start tidb:%v successfully with args: %v\n", ver, args)
 	return
 }
 
@@ -88,4 +90,16 @@ func StopTiDB(p *localdata.Process) {
 	if err := syscall.Kill(p.Pid, syscall.SIGKILL); err != nil {
 		panic(err)
 	}
+}
+
+func tmpPathDir() string {
+	t := time.Now().Format(time.RFC3339)
+	t = strings.ReplaceAll(t, ":", "-")
+	return filepath.Join(os.TempDir(), "plan-change-capturer-instance", t)
+}
+
+type slicer struct{}
+
+func (s *slicer) Write(p []byte) (n int, err error) {
+	return len(p), nil
 }
