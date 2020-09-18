@@ -23,7 +23,7 @@ type exportOpt struct {
 func newExportCmd() *cobra.Command {
 	var opt exportOpt
 	cmd := &cobra.Command{
-		Use:   "transport",
+		Use:   "export",
 		Short: "export queries, schemas and statistic information from TiDB",
 		Long:  `export queries, schemas and statistic information from TiDB`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -39,15 +39,15 @@ func newExportCmd() *cobra.Command {
 
 		},
 	}
+	cmd.Flags().StringVar(&opt.mode, "mode", "", "schema_stats: export schema and stats from TiDB; stmt_summary: export queries from the statement_summary table (schema_stats / stmt_summary)")
 	cmd.Flags().StringVar(&opt.db.addr, "addr", "127.0.0.1", "address of the target TiDB")
 	cmd.Flags().StringVar(&opt.db.port, "port", "4000", "port of the target TiDB")
-	cmd.Flags().StringVar(&opt.db.statusPort, "statusport", "10080", "status port of the target TiDB")
+	cmd.Flags().StringVar(&opt.db.statusPort, "status-port", "10080", "status port of the target TiDB")
 	cmd.Flags().StringVar(&opt.db.user, "user", "", "user name to access the target TiDB")
 	cmd.Flags().StringVar(&opt.db.password, "password", "", "password to access the target TiDB")
-	cmd.Flags().StringVar(&opt.mode, "mode", "", "schema_stats: export schema and stats from TiDB; stmt_summary: export queries from the statement_summary table (schema_stats / stmt_summary)")
-	cmd.Flags().StringVar(&opt.dir, "dir", "", "destination directory to store exported schemas and statistics (only for schema_stats mode)")
+	cmd.Flags().StringVar(&opt.dir, "schema-stats-dir", "", "destination directory to store exported schemas and statistics (only for schema_stats mode)")
 	cmd.Flags().StringSliceVar(&opt.tables, "tables", nil, "tables to export, if nil export all tables' schema and stats (only for schema_stats mode)")
-	cmd.Flags().StringVar(&opt.queryFile, "query_file", "", "file path to store queries (only for stmt_summary mode)")
+	cmd.Flags().StringVar(&opt.queryFile, "query-file", "", "file path to store queries (only for stmt_summary mode)")
 	return cmd
 }
 
@@ -143,7 +143,7 @@ func exportSchemaStats(db *tidbHandler, dir string, tables []string) error {
 }
 
 func exportTableSchemas(db *tidbHandler, dbName, table, dir string) error {
-	showSQL := fmt.Sprintf("show create table `%v`.`%v`", db, table)
+	showSQL := fmt.Sprintf("show create table `%v`.`%v`", dbName, table)
 	rows, err := db.db.Query(showSQL)
 	if err != nil {
 		return fmt.Errorf("exec SQL: %v error: %v", showSQL, err)
@@ -162,7 +162,7 @@ func exportTableSchemas(db *tidbHandler, dbName, table, dir string) error {
 }
 
 func exportTableStats(db *tidbHandler, dbName, table, dir string) error {
-	addr := fmt.Sprintf("http://%v:%v/stats/dump/%v/%v", db.opt.addr, db.opt.statusPort, db, table)
+	addr := fmt.Sprintf("http://%v:%v/stats/dump/%v/%v", db.opt.addr, db.opt.statusPort, dbName, table)
 	resp, err := http.Get(addr)
 	if err != nil {
 		return fmt.Errorf("request URL: %v error: %v", addr, err)
@@ -170,6 +170,9 @@ func exportTableStats(db *tidbHandler, dbName, table, dir string) error {
 	stats, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("read data from URL: %v response error: %v", addr, err)
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("request URL: %v server error: %v", addr, string(stats))
 	}
 	fpath := statsPath(dbName, table, dir)
 	fmt.Printf("export stats of %v.%v into %v\n", dbName, table, fpath)
