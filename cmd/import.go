@@ -32,7 +32,7 @@ func newImportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db.port, "port", "4000", "port of the target TiDB")
 	cmd.Flags().StringVar(&opt.db.user, "user", "", "user name to access the target TiDB")
 	cmd.Flags().StringVar(&opt.db.password, "password", "", "password to access the target TiDB")
-	cmd.Flags().StringVar(&opt.dir, "dir", "", "the directory which stores schemas and statistics")
+	cmd.Flags().StringVar(&opt.dir, "schema-stats-dir", "", "the directory which stores schemas and statistics")
 	return cmd
 }
 
@@ -61,7 +61,7 @@ func importSchemas(db *tidbHandler, dbName, table, dir string) error {
 		return fmt.Errorf("read schema info from %v error: %v", schemaPath, err)
 	}
 	if err := db.execute(fmt.Sprintf("create database if not exists `%v`", db),
-		fmt.Sprintf("use %v", db), string(schemaSQL)); err != nil {
+		fmt.Sprintf("use %v", dbName), string(schemaSQL)); err != nil {
 		return err
 	}
 	fmt.Printf("import schemas from %v successfully\n", schemaPath)
@@ -72,5 +72,5 @@ func importStats(db *tidbHandler, dbName, table, dir string) error {
 	statsPath := statsPath(dbName, table, dir)
 	mysql.RegisterLocalFile(statsPath)
 	fmt.Printf("import schemas from %v successfully\n", statsPath)
-	return db.execute(fmt.Sprintf("load stats `%v`", statsPath))
+	return db.execute(fmt.Sprintf("load stats '%v'", statsPath))
 }

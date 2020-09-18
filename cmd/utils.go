@@ -165,6 +165,7 @@ func statsPath(db, table, dir string) string {
 
 func parseDBTables(dir string) (map[string][]string, error) {
 	dbTables := make(map[string][]string)
+	exists := make(map[string]struct{})
 	err := filepath.Walk(dir, func(fpath string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
@@ -178,7 +179,13 @@ func parseDBTables(dir string) (map[string][]string, error) {
 			fields = strings.Split(fname[len("stats-"):len(fname)-len(".json")], "-")
 		}
 		if len(fields) == 2 {
-			dbTables[fields[0]] = append(dbTables[fields[0]], fields[1])
+			db := fields[0]
+			table := fields[1]
+			if _, ok := exists[db+"."+table]; ok {
+				return nil
+			}
+			exists[db+"."+table] = struct{}{}
+			dbTables[db] = append(dbTables[db], table)
 		}
 		return nil
 	})
