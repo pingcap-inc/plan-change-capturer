@@ -60,7 +60,7 @@ func importSchemas(db *tidbHandler, dbName, table, dir string) error {
 	if err != nil {
 		return fmt.Errorf("read schema info from %v error: %v", schemaPath, err)
 	}
-	if err := db.execute(fmt.Sprintf("create database if not exists `%v`", db),
+	if err := db.execute(fmt.Sprintf("create database if not exists `%v`", dbName),
 		fmt.Sprintf("use %v", dbName), string(schemaSQL)); err != nil {
 		return err
 	}
