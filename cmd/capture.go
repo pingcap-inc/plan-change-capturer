@@ -50,7 +50,7 @@ func newCaptureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db1.version, "ver1", "", "version of the first TiDB")
 	cmd.Flags().StringVar(&opt.db2.version, "ver2", "", "version of the second TiDB")
 	cmd.Flags().StringVar(&opt.queryFile, "query-file", "", "query file path")
-	cmd.Flags().StringVar(&opt.schemaDir, "dir", "", "dir to store schemas and stats")
+	cmd.Flags().StringVar(&opt.schemaDir, "schema-stats-dir", "", "dir to store schemas and stats")
 	cmd.Flags().BoolVar(&opt.digestFlag, "digest-flag", false, "SQLs with the same digest only be printed once if it is true")
 	cmd.Flags().StringSliceVar(&opt.tables, "tables", nil, "tables to export")
 	return cmd
@@ -62,11 +62,17 @@ func runCaptureOfflineMode(opt *captureOpt) error {
 		return fmt.Errorf("start and connect to DB1 error: %v", err)
 	}
 	defer db1.stop()
-	db2, err := startAndConnectDB(opt.db1, opt.DB)
+	db2, err := startAndConnectDB(opt.db2, opt.DB)
 	if err != nil {
 		return fmt.Errorf("start and connect to DB2 error: %v", err)
 	}
 	defer db2.stop()
+	if err := importSchemaStats(db1, opt.schemaDir); err != nil {
+		return fmt.Errorf("import schema and stats into DB1 error: %v", err)
+	}
+	if err := importSchemaStats(db2, opt.schemaDir); err != nil {
+		return fmt.Errorf("import schema and stats into DB2 error: %v", err)
+	}
 	sqls, err := scanQueryFile(opt.queryFile)
 	if err != nil {
 		return err
