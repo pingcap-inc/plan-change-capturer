@@ -54,6 +54,7 @@ func newCaptureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db2.version, "ver2", "", "version of the second TiDB")
 	cmd.Flags().StringVar(&opt.queryFile, "query-file", "", "query file path")
 	cmd.Flags().StringVar(&opt.schemaDir, "schema-stats-dir", "", "dir to store schemas and stats")
+	cmd.Flags().StringVar(&opt.DB, "db", "mysql", "the default database when connecting to TiDB")
 	cmd.Flags().BoolVar(&opt.digestFlag, "digest-flag", false, "SQLs with the same digest only be printed once if it is true")
 	cmd.Flags().StringSliceVar(&opt.tables, "tables", nil, "tables to export")
 	return cmd
