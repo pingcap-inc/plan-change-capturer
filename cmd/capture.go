@@ -37,7 +37,6 @@ func newCaptureCmd() *cobra.Command {
 			default:
 				return fmt.Errorf("unknown capture mode %v", opt.mode)
 			}
-			return nil
 		},
 	}
 
@@ -47,6 +46,10 @@ func newCaptureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db1.statusPort, "status-port1", "10080", "status port of the first TiDB")
 	cmd.Flags().StringVar(&opt.db1.user, "user1", "", "user name to access the first TiDB")
 	cmd.Flags().StringVar(&opt.db1.password, "password1", "", "password to access the first TiDB")
+	cmd.Flags().StringVar(&opt.db2.addr, "addr2", "127.0.0.1", "address of the first TiDB")
+	cmd.Flags().StringVar(&opt.db2.port, "port2", "4000", "port of the first TiDB")
+	cmd.Flags().StringVar(&opt.db2.user, "user2", "", "user name to access the first TiDB")
+	cmd.Flags().StringVar(&opt.db2.password, "password2", "", "password to access the first TiDB")
 	cmd.Flags().StringVar(&opt.db1.version, "ver1", "", "version of the first TiDB")
 	cmd.Flags().StringVar(&opt.db2.version, "ver2", "", "version of the second TiDB")
 	cmd.Flags().StringVar(&opt.queryFile, "query-file", "", "query file path")
@@ -57,19 +60,34 @@ func newCaptureCmd() *cobra.Command {
 }
 
 func runCaptureOfflineMode(opt *captureOpt) error {
-	db1, err := startAndConnectDB(opt.db1, opt.DB)
-	if err != nil {
-		return fmt.Errorf("start and connect to DB1 error: %v", err)
+	var db1, db2 *tidbHandler
+	var err error
+	if opt.db1.addr != "" {
+		db1, err = connectDB(opt.db1, opt.DB)
+		if err != nil {
+			return fmt.Errorf("connect to DB1 error: %v", err)
+		}
+	} else {
+		db1, err = startAndConnectDB(opt.db1, opt.DB)
+		if err != nil {
+			return fmt.Errorf("start and connect to DB1 error: %v", err)
+		}
+		defer db1.stop()
 	}
-	defer db1.stop()
-	db2, err := startAndConnectDB(opt.db2, opt.DB)
-	if err != nil {
-		return fmt.Errorf("start and connect to DB2 error: %v", err)
+
+	if opt.db2.addr != "" {
+		db2, err = connectDB(opt.db2, opt.DB)
+		if err != nil {
+			return fmt.Errorf("connect to DB2 error: %v", err)
+		}
+	} else {
+		db2, err = startAndConnectDB(opt.db2, opt.DB)
+		if err != nil {
+			return fmt.Errorf("start and connect to DB2 error: %v", err)
+		}
+		defer db2.stop()
 	}
-	defer db2.stop()
-	if err := importSchemaStats(db1, opt.schemaDir); err != nil {
-		return fmt.Errorf("import schema and stats into DB1 error: %v", err)
-	}
+
 	if err := importSchemaStats(db2, opt.schemaDir); err != nil {
 		return fmt.Errorf("import schema and stats into DB2 error: %v", err)
 	}
