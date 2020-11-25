@@ -40,7 +40,8 @@ func newImportCmd() *cobra.Command {
 func importSchemaStats(db *tidbHandler, dir string) error {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		return fmt.Errorf("no schema dir")
+		fmt.Println("[PCC]: no schema-stats-dir, skip import")
+		return nil
 	}
 	dbTables, err := parseDBTables(dir)
 	if err != nil {
