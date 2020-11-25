@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/spf13/cobra"
@@ -37,6 +38,10 @@ func newImportCmd() *cobra.Command {
 }
 
 func importSchemaStats(db *tidbHandler, dir string) error {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return fmt.Errorf("no schema dir")
+	}
 	dbTables, err := parseDBTables(dir)
 	if err != nil {
 		return fmt.Errorf("parse db and tables from %v error: %v", dir, err)
