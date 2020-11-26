@@ -113,6 +113,26 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 	|   └─Selection_6       | 10.00    | cop  | eq(test.t.c, 10)                                           |
 	|     └─TableScan_5     | 10000.00 | cop  | table:t, range:[-inf,+inf], keep order:false, stats:pseudo |
 	+-----------------------+----------+------+------------------------------------------------------------+`},
+		{
+			"select * from SYS_PARAMETER_CONFIG s where s.PARAMETER_TYPE = 'YXT_TASK_CONF' and s.PARAMETER_NAME = 'D267BF'",
+			`
+	+-------------------------------+---------+-----------+---------------------------------------+-----------------------------------------------------------+
+	| id                            | estRows | task      | access object                         | operator info                                             |
+	+-------------------------------+---------+-----------+---------------------------------------+-----------------------------------------------------------+
+	| IndexLookUp_11                | 0.00    | root      |                                       |                                                           |
+	| ├─IndexRangeScan_8(Build)     | 0.00    | cop[tikv] | table:s, index:spc_pt(PARAMETER_TYPE) | range:["YXT_TASK_CONF","YXT_TASK_CONF"], keep order:false |
+	| └─Selection_10(Probe)         | 0.00    | cop[tikv] |                                       | eq(sdyx.sys_parameter_config.parameter_name, "D267BF")    |
+	|   └─TableRowIDScan_9          | 0.00    | cop[tikv] | table:s                               | keep order:false                                          |
+	+-------------------------------+---------+-----------+---------------------------------------+-----------------------------------------------------------+`,
+			`
+	+---------------------+-------+------+------------------------------------------------------------------------------------------+
+	| id                  | count | task | operator info                                                                            |
+	+---------------------+-------+------+------------------------------------------------------------------------------------------+
+	| IndexLookUp_11      | 0.00  | root |                                                                                          |
+	| ├─IndexScan_8       | 0.00  | cop  | table:s, index:PARAMETER_TYPE, range:["YXT_TASK_CONF","YXT_TASK_CONF"], keep order:false |
+	| └─Selection_10      | 0.00  | cop  | eq(sdyx.s.parameter_name, "D267BF")                                                      |
+	|   └─TableScan_9     | 0.00  | cop  | table:SYS_PARAMETER_CONFIG, keep order:false                                             |
+	+---------------------+-------+------+------------------------------------------------------------------------------------------+`},
 	}
 
 	for _, ca := range cases {
