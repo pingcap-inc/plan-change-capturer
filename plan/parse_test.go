@@ -133,6 +133,26 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 	| └─Selection_10      | 0.00  | cop  | eq(sdyx.s.parameter_name, "D267BF")                                                      |
 	|   └─TableScan_9     | 0.00  | cop  | table:SYS_PARAMETER_CONFIG, keep order:false                                             |
 	+---------------------+-------+------+------------------------------------------------------------------------------------------+`},
+		{
+			``,
+			`
+	+-------------------+---------+------+-----------------------------------------------------------------+
+	| id                |  count  | task | operator info                                                   |
+	+-------------------+---------+------+-----------------------------------------------------------------+
+	| Projection_4      |  63.60  | root | sbtest_pcc.sbtest1.c                                            |
+	| └─IndexLookUp_10  |  63.60  | root |                                                                 |
+	|   ├─IndexScan_8   |  63.60  | cop  | table:sbtest1, index:k, range:[421009,421009], keep order:false |
+	|   └─TableScan_9   |  63.60  | cop  | table:sbtest1, keep order:false                                 |
+	+-------------------+-------+------+-------------------------------------------------------------------+`,
+			`
+	+------------------------------+---------+-------------+------------------------------+------------------------------------------+
+	| id                           |  count  | task        | access object                | operator info                            |
+	+------------------------------+---------+-------------+------------------------------+------------------------------------------+
+	| Projection_4                 |  65.68  |  root       |                              |sbtest_pcc.sbtest1.c                      |
+	| └─IndexLookUp_10             |  65.68  |  root       |                              |                                          |
+	|   ├─IndexRangeScan_8(Build)  |  65.68  |  cop[tikv]  | table:sbtest1, index:k_1(k)  | range:[421009,421009], keep order:false  |
+	|   └─TableRowIDScan_9(Probe)  |  65.68  |  cop[tikv]  | table:sbtest1                | keep order:false                         |
+	+-------------------+-------+------+---------------------------------------------------------------------------------------------+`},
 	}
 
 	for _, ca := range cases {
@@ -140,7 +160,8 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 		c.Assert(err, IsNil)
 		planv4, err := ParseText(ca.sql, ca.v4, V4)
 		c.Assert(err, IsNil)
-		_, same := Compare(planv3, planv4)
+		reas, same := Compare(planv3, planv4)
+		fmt.Println(">>>> ", reas)
 		c.Assert(same, IsTrue)
 	}
 }

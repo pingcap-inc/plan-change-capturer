@@ -69,7 +69,7 @@ func compare(op1, op2 Operator) (reason string, same bool) {
 		t1, t2 := op1.(IndexScanOp), op2.(IndexScanOp)
 		if t1.Table != t2.Table || t1.Index != t2.Index {
 			same = false
-			reason = fmt.Sprintf("different index scan %v:%v, %v:%v", t1.ID(), t1.Table, t2.ID(), t2.Table)
+			reason = fmt.Sprintf("different index scan %v:%v:%v, %v:%v:%v", t1.ID(), t1.Table, t1.Index, t2.ID(), t2.Table, t2.Index)
 		}
 	}
 	if !same {

@@ -65,7 +65,12 @@ func parseRowV4(cols []string, children []Operator) (Operator, error) {
 		return IndexReaderOp{base}, nil
 	case OpTypeIndexScan:
 		kvs := splitKVs(cols[3])
-		return IndexScanOp{base, kvs["table"], strings.Split(kvs["index"], "(")[0]}, nil
+		idxStr := kvs["index"]
+		if p := strings.Index(idxStr, "("); p != -1 {
+			// only keep columns in this index: idx(ka, kb)  -->> ka, kb
+			idxStr = idxStr[p+1 : len(idxStr)-1]
+		}
+		return IndexScanOp{base, kvs["table"], idxStr}, nil
 	case OpTypeIndexLookup:
 		return IndexLookupOp{base}, nil
 	case OpTypeSelection:
