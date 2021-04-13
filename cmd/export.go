@@ -18,6 +18,7 @@ type exportOpt struct {
 	queryFile string
 	dir       string
 	tables    []string
+	specDB    string
 }
 
 func newExportCmd() *cobra.Command {
@@ -46,6 +47,7 @@ func newExportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db.user, "user", "", "user name to access the target TiDB")
 	cmd.Flags().StringVar(&opt.db.password, "password", "", "password to access the target TiDB")
 	cmd.Flags().StringVar(&opt.dir, "schema-stats-dir", "", "destination directory to store exported schemas and statistics (only for schema_stats mode)")
+	cmd.Flags().StringVar(&opt.specDB, "db", "", "DB to export, only export schema/stats of tables in this DB")
 	cmd.Flags().StringSliceVar(&opt.tables, "tables", nil, "tables to export, if nil export all tables' schema and stats (only for schema_stats mode)")
 	cmd.Flags().StringVar(&opt.queryFile, "query-file", "", "file path to store queries (only for stmt_summary mode)")
 	return cmd
@@ -68,11 +70,16 @@ func runExportStmtSummary(opt *exportOpt) error {
 		return fmt.Errorf("no file path to store queries")
 	}
 
-	return exportQueriesFromStmtSummary(db, opt.queryFile)
+	return exportQueriesFromStmtSummary(db, opt.specDB, opt.queryFile)
 }
 
-func exportQueriesFromStmtSummary(db *tidbHandler, dstFile string) error {
-	rows, err := db.db.Query("SELECT QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%'")
+func exportQueriesFromStmtSummary(db *tidbHandler, specDB, dstFile string) error {
+	query := `SELECT QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%'`
+	if specDB != "" {
+		query = `SELECT QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%' AND SCHEMA_NAME='` + specDB + `'`
+	}
+
+	rows, err := db.db.Query(query)
 	if err != nil {
 		return fmt.Errorf("select queries from information_schema.cluster_statements_summary_history error: %v", err)
 	}
@@ -115,16 +122,20 @@ func runExportSchemaStats(opt *exportOpt) error {
 	if err != nil {
 		return fmt.Errorf("connect to DB error: %v", err)
 	}
-	return exportSchemaStats(db, opt.dir, opt.tables)
+	return exportSchemaStats(db, opt.dir, opt.specDB, opt.tables)
 }
 
-func exportSchemaStats(db *tidbHandler, dir string, tables []string) error {
+func exportSchemaStats(db *tidbHandler, dir, specDB string, tables []string) error {
 	dbs, err := db.getDBs()
 	if err != nil {
 		return fmt.Errorf("get databases error: %v", err)
 	}
 	tablesMap := stringSliceToMap(tables)
 	for _, dbName := range dbs {
+		if specDB != "" && strings.ToLower(dbName) != strings.ToLower(specDB) {
+			continue
+		}
+
 		tables, err := db.getTables(dbName)
 		if err != nil {
 			return fmt.Errorf("get tables from DB: %v, error: %v", dbName, err)

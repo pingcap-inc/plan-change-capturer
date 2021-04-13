@@ -114,7 +114,7 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 	if err := os.MkdirAll(dir, 0776); err != nil {
 		return fmt.Errorf("create destination directory error: %v", err)
 	}
-	if err := exportSchemaStats(db1, dir, nil); err != nil {
+	if err := exportSchemaStats(db1, dir, "", nil); err != nil {
 		return fmt.Errorf("export schema and stats from DB1 error: %v", err)
 	}
 	if err := importSchemaStats(db2, dir); err != nil {
