@@ -37,6 +37,7 @@ const (
 	OpTypeSort
 	OpTypeTopN
 	OpTypeTableDual
+	OpTypeSelectLock
 )
 
 func OpTypeIsJoin(opType OpType) bool {
@@ -231,5 +232,9 @@ type TopNOp struct {
 }
 
 type TableDual struct {
+	BaseOp
+}
+
+type SelectLock struct {
 	BaseOp
 }

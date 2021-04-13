@@ -92,6 +92,8 @@ func parseLineV3(cols []string, children []Operator) (Operator, error) {
 		return TopNOp{base}, nil
 	case OpTypeTableDual:
 		return TableDual{base}, nil
+	case OpTypeSelectLock:
+		return SelectLock{base}, nil
 	}
 	return nil, errors.Errorf("unknown operator type %v", opID)
 }

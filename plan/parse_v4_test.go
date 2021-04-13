@@ -81,3 +81,21 @@ func (s *parseTestSuite) TestParseAggV4(c *C) {
 	c.Assert(p.Root.Type(), Equals, OpTypeStreamAgg)
 	c.Assert(p.Root.Children()[0].Children()[0].Children()[0].ID(), Equals, "IndexLookUp_15")
 }
+
+func (s *parseTestSuite) TestParseSelectLockV4(c *C) {
+	p := `
++-----------------------------+----------+-----------+---------------+--------------------------------+
+| id                          | estRows  | task      | access object | operator info                  |
++-----------------------------+----------+-----------+---------------+--------------------------------+
+| Projection_5                | 10.00    | root      |               | test.t.a                       |
+| └─SelectLock_6              | 10.00    | root      |               | for update 0                   |
+|   └─TableReader_9           | 10.00    | root      |               | data:Selection_8               |
+|     └─Selection_8           | 10.00    | cop[tikv] |               | eq(test.t.a, 1)                |
+|       └─TableFullScan_7     | 10000.00 | cop[tikv] | table:t       | keep order:false, stats:pseudo |
++-----------------------------+----------+-----------+---------------+--------------------------------+
+`
+	plan, err := ParseText("", p, V4)
+	c.Assert(err, IsNil)
+	c.Assert(plan.Root.ID(), Equals, "Projection_5")
+	c.Assert(plan.Root.Children()[0].Type(), Equals, OpTypeSelectLock)
+}

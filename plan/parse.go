@@ -265,6 +265,9 @@ func MatchOpType(opID string) OpType {
 	if strings.Contains(x, "topn") {
 		return OpTypeTopN
 	}
+	if strings.Contains(x, "selectlock") {
+		return OpTypeSelectLock
+	}
 	return OpTypeUnknown
 }
 
