@@ -89,7 +89,7 @@ func runCaptureOfflineMode(opt *captureOpt) error {
 		defer db2.stop()
 	}
 
-	if err := importSchemaStats(db2, opt.schemaDir); err != nil {
+	if err := importSchemaStats(db2, "", opt.schemaDir); err != nil {
 		return fmt.Errorf("import schema and stats into DB2 error: %v", err)
 	}
 	sqls, err := scanQueryFile(opt.queryFile)
@@ -117,7 +117,7 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 	if err := exportSchemaStats(db1, dir, "", nil); err != nil {
 		return fmt.Errorf("export schema and stats from DB1 error: %v", err)
 	}
-	if err := importSchemaStats(db2, dir); err != nil {
+	if err := importSchemaStats(db2, "", dir); err != nil {
 		return fmt.Errorf("import shcema and stats into DB2 error: %v", err)
 	}
 

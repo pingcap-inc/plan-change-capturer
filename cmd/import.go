@@ -10,8 +10,9 @@ import (
 )
 
 type importOpt struct {
-	db  tidbAccessOptions
-	dir string
+	db     tidbAccessOptions
+	dir    string
+	specDB string
 }
 
 func newImportCmd() *cobra.Command {
@@ -26,7 +27,7 @@ func newImportCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("connect to DB error: %v", err)
 			}
-			return importSchemaStats(db, opt.dir)
+			return importSchemaStats(db, opt.specDB, opt.dir)
 		},
 	}
 	cmd.Flags().StringVar(&opt.db.addr, "addr", "127.0.0.1", "address of the target TiDB")
@@ -34,10 +35,11 @@ func newImportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db.user, "user", "", "user name to access the target TiDB")
 	cmd.Flags().StringVar(&opt.db.password, "password", "", "password to access the target TiDB")
 	cmd.Flags().StringVar(&opt.dir, "schema-stats-dir", "", "the directory which stores schemas and statistics")
+	cmd.Flags().StringVar(&opt.specDB, "db", "", "the DB to import, stats/schemas of other DBs will be ignored")
 	return cmd
 }
 
-func importSchemaStats(db *tidbHandler, dir string) error {
+func importSchemaStats(db *tidbHandler, specDB, dir string) error {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
 		fmt.Println("[PCC]: no schema-stats-dir, skip import")
@@ -48,6 +50,9 @@ func importSchemaStats(db *tidbHandler, dir string) error {
 		return fmt.Errorf("parse db and tables from %v error: %v", dir, err)
 	}
 	for dbName, tables := range dbTables {
+		if specDB != "" && strings.ToLower(dbName) != strings.ToLower(specDB) {
+			continue
+		}
 		for _, tableName := range tables {
 			if err = importSchemas(db, dbName, tableName, dir); err != nil {
 				return fmt.Errorf("import schemas error: %v", err)
