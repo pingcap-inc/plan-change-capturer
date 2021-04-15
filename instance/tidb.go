@@ -41,9 +41,6 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 	fmt.Printf("Try to start tidb:%v ... \n", ver)
 	env := environment.GlobalEnv()
 	component, version := environment.ParseCompVersion(fmt.Sprintf("tidb:%v", ver))
-	if !env.IsSupportedComponent(component) {
-		panic(fmt.Errorf("component `%s` does not support", component))
-	}
 
 	var tag string
 	instanceDir := os.Getenv(localdata.EnvNameInstanceDataDir)
@@ -57,7 +54,21 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 	port = utils.MustGetFreePort("0.0.0.0", 4000)
 	statusPort = utils.MustGetFreePort("0.0.0.0", 10080)
 	args := []string{fmt.Sprintf("-P=%v", port), fmt.Sprintf("-status=%v", statusPort), fmt.Sprintf("-path=%v", tmpPathDir())}
-	c, err := exec.PrepareCommand(context.Background(), "tidb", version, "", tag, instanceDir, "", args, env, true)
+	prepCmds := &exec.PrepareCommandParams{
+		Ctx:          context.Background(),
+		Component:    "tidb",
+		Version:      version,
+		BinPath:      "",
+		Tag:          tag,
+		InstanceDir:  instanceDir,
+		WD:           "",
+		Args:         args,
+		EnvVariables: nil,
+		SysProcAttr:  nil,
+		Env:          env,
+		CheckUpdate:  true,
+	}
+	c, err := exec.PrepareCommand(prepCmds)
 	if err != nil {
 		panic(err)
 	}
