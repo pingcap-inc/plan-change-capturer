@@ -5,6 +5,9 @@ import (
 	"strings"
 
 	"github.com/pingcap/errors"
+	"github.com/pingcap/parser"
+	"github.com/pingcap/parser/ast"
+	_ "github.com/pingcap/tidb/types/parser_driver"
 )
 
 func ParseText(sql, explainText, version string) (Plan, error) {
@@ -46,10 +49,35 @@ func Compare(p1, p2 Plan) (reason string, same bool) {
 	if p1.SQL != p2.SQL {
 		return "differentiate SQLs", false
 	}
-	return compare(p1.Root, p2.Root)
+	return compare(p1.Root, p2.Root, fillInAlias(p1.SQL))
 }
 
-func compare(op1, op2 Operator) (reason string, same bool) {
+func fillInAlias(sql string) (alias map[string]string) {
+	alias = make(map[string]string)
+	node, err := parser.New().ParseOneStmt(sql, "", "")
+	if err != nil {
+		return
+	}
+	sel, ok := node.(*ast.SelectStmt)
+	if !ok {
+		return
+	}
+	if sel == nil || sel.From == nil {
+		return
+	}
+	switch x := sel.From.TableRefs.Left.(type) {
+	case *ast.TableSource:
+		switch v := x.Source.(type) {
+		case *ast.TableName:
+			if x.AsName.L != "" {
+				alias[v.Name.L] = x.AsName.L
+			}
+		}
+	}
+	return
+}
+
+func compare(op1, op2 Operator, tblAlias map[string]string) (reason string, same bool) {
 	if op1.Type() != op2.Type() || op1.Task() != op2.Task() {
 		return fmt.Sprintf("different operators %v and %v", op1.ID(), op2.ID()), false
 	}
@@ -61,13 +89,13 @@ func compare(op1, op2 Operator) (reason string, same bool) {
 	switch op1.Type() {
 	case OpTypeTableScan:
 		t1, t2 := op1.(TableScanOp), op2.(TableScanOp)
-		if t1.Table != t2.Table {
+		if !sameTable(t1.Table, t2.Table, tblAlias) {
 			same = false
 			reason = fmt.Sprintf("different table scan %v:%v, %v:%v", t1.ID(), t1.Table, t2.ID(), t2.Table)
 		}
 	case OpTypeIndexScan:
 		t1, t2 := op1.(IndexScanOp), op2.(IndexScanOp)
-		if t1.Table != t2.Table || t1.Index != t2.Index {
+		if !sameTable(t1.Table, t2.Table, tblAlias) || t1.Index != t2.Index {
 			same = false
 			reason = fmt.Sprintf("different index scan %v:%v:%v, %v:%v:%v", t1.ID(), t1.Table, t1.Index, t2.ID(), t2.Table, t2.Index)
 		}
@@ -76,11 +104,29 @@ func compare(op1, op2 Operator) (reason string, same bool) {
 		return reason, false
 	}
 	for i := range c1 {
-		if reason, same = compare(c1[i], c2[i]); !same {
+		if reason, same = compare(c1[i], c2[i], tblAlias); !same {
 			return reason, same
 		}
 	}
 	return "", true
+}
+
+func sameTable(t1, t2 string, alias map[string]string) bool {
+	if alias == nil {
+		alias = make(map[string]string)
+	}
+	t1 = strings.ToLower(t1)
+	t2 = strings.ToLower(t2)
+	if t1 == t2 {
+		return true
+	}
+	if alias[t1] != "" && alias[t1] == t2 {
+		return true
+	}
+	if alias[t2] != "" && alias[t2] == t1 {
+		return true
+	}
+	return false
 }
 
 func trimAndSplitExplainResult(explainResult string) ([]string, error) {
