@@ -153,12 +153,28 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 	|   ├─IndexRangeScan_8(Build)  |  65.68  |  cop[tikv]  | table:sbtest1, index:k_1(k)  | range:[421009,421009], keep order:false  |
 	|   └─TableRowIDScan_9(Probe)  |  65.68  |  cop[tikv]  | table:sbtest1                | keep order:false                         |
 	+-------------------+-------+------+---------------------------------------------------------------------------------------------+`},
+		{
+			`explain select * FROM sbtest10 a WHERE a.k=501828`,
+			`
+	+-------------------+---------+------+-----------------------------------------------------------------+
+	| id                |  count  | task | operator info                                                   |
+	+-------------------+---------+------+-----------------------------------------------------------------+
+	| IndexLookUp_10    |  359.02 | root |                                                                 |
+	| ├─IndexScan_8     |  359.02 | cop  | table:a, index:k, range:[501828,501828], keep order:false       |
+	| └─TableScan_9     |  359.02 | cop  | table:sbtest10, keep order:false                                |
+	+-------------------+---------+------+-----------------------------------------------------------------+`,
+			`
+	+----------------------------+---------+-------------+------------------------------+------------------------------------------+
+	| id                         |  count  | task        | access object                | operator info                            |
+	+----------------------------+---------+-------------+------------------------------+------------------------------------------+
+	| IndexLookUp_10             |  359.02 |  root       |                              |                                          |
+	| ├─IndexRangeScan_8(Build)  |  359.02 |  cop[tikv]  |  table:a, index:k_10(k)      | range:[501828,501828], keep order:false  |
+	| └─TableRowIDScan_9(Probe)  |  359.02 |  cop[tikv]  |  table:a                     | keep order:false                         |
+	+----------------------------+---------+-------------+-------------------------------------------------------------------------+
+`},
 	}
 
-	for i, ca := range cases {
-		if i != 5 {
-			continue
-		}
+	for _, ca := range cases {
 		planv3, err := ParseText(ca.sql, ca.v3, V3)
 		c.Assert(err, IsNil)
 		planv4, err := ParseText(ca.sql, ca.v4, V4)

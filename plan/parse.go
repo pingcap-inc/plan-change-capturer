@@ -58,6 +58,9 @@ func fillInAlias(sql string) (alias map[string]string) {
 	if err != nil {
 		return
 	}
+	if exp, ok := node.(*ast.ExplainStmt); ok {
+		node = exp.Stmt
+	}
 	sel, ok := node.(*ast.SelectStmt)
 	if !ok {
 		return
