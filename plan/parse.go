@@ -45,11 +45,25 @@ func Parse(version, sql string, explainRows [][]string) (_ Plan, err error) {
 	return Plan{}, errors.Errorf("unsupported TiDB version %v", version)
 }
 
-func Compare(p1, p2 Plan) (reason string, same bool) {
+func Compare(p1, p2 Plan, ignoreProject bool) (reason string, same bool) {
 	if p1.SQL != p2.SQL {
 		return "differentiate SQLs", false
 	}
+	if ignoreProject {
+		p1.Root = removeProj(p1.Root)
+		p2.Root = removeProj(p2.Root)
+	}
 	return compare(p1.Root, p2.Root, fillInAlias(p1.SQL))
+}
+
+func removeProj(node Operator) Operator {
+	if node.Type() == OpTypeProjection {
+		return node.Children()[0]
+	}
+	for i, child := range node.Children() {
+		node.SetChild(i, removeProj(child))
+	}
+	return node
 }
 
 func fillInAlias(sql string) (alias map[string]string) {

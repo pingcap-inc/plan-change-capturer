@@ -87,6 +87,7 @@ type Operator interface {
 
 	Format(indent int) string
 	Children() []Operator
+	SetChild(i int, child Operator)
 }
 
 type BaseOp struct {
@@ -126,6 +127,10 @@ func (op BaseOp) Format(indent int) string {
 
 func (op BaseOp) Children() []Operator {
 	return op.children
+}
+
+func (op BaseOp) SetChild(i int, child Operator) {
+	op.children[i] = child
 }
 
 type HashJoinOp struct {

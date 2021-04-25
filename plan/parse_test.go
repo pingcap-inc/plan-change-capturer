@@ -198,7 +198,64 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 		c.Assert(err, IsNil)
 		planv4, err := ParseText(ca.sql, ca.v4, V4)
 		c.Assert(err, IsNil)
-		reas, same := Compare(planv3, planv4)
+		reas, same := Compare(planv3, planv4, false)
+		fmt.Println(">>>> ", reas)
+		c.Assert(same, IsTrue)
+	}
+}
+
+func (s *parseTestSuite) TestCompareSameWithoutProj(c *C) {
+	cases := []struct {
+		sql string
+		v3  string
+		v4  string
+	}{
+		{
+			`explain select b from t where c = 10`,
+			`
+	+-------------------------+----------+-----------+---------------+--------------------------------+
+	| id                      | estRows  | task      | access object | operator info                  |
+	+-------------------------+----------+-----------+---------------+--------------------------------+
+	| TableReader_7           | 10.00    | root      |               | data:Selection_6               |
+	| └─Selection_6           | 10.00    | cop[tikv] |               | eq(test.t.c, 10)               |
+	|   └─TableFullScan_5     | 10000.00 | cop[tikv] | table:t       | keep order:false, stats:pseudo |
+	+-------------------------+----------+-----------+---------------+--------------------------------+`,
+			`
+	+-----------------------+----------+------+------------------------------------------------------------+
+	| id                    | count    | task | operator info                                              |
+	+-----------------------+----------+------+------------------------------------------------------------+
+	| Projection_4          | 10.00    | root | test.t.b                                                   |
+	| └─TableReader_7       | 10.00    | root | data:Selection_6                                           |
+	|   └─Selection_6       | 10.00    | cop  | eq(test.t.c, 10)                                           |
+	|     └─TableScan_5     | 10000.00 | cop  | table:t, range:[-inf,+inf], keep order:false, stats:pseudo |
+	+-----------------------+----------+------+------------------------------------------------------------+`},
+		{
+			``,
+			`
+	+-------------------+---------+------+-----------------------------------------------------------------+
+	| id                |  count  | task | operator info                                                   |
+	+-------------------+---------+------+-----------------------------------------------------------------+
+	| Projection_4      |  63.60  | root | sbtest_pcc.sbtest1.c                                            |
+	| └─IndexLookUp_10  |  63.60  | root |                                                                 |
+	|   ├─IndexScan_8   |  63.60  | cop  | table:sbtest1, index:k, range:[421009,421009], keep order:false |
+	|   └─TableScan_9   |  63.60  | cop  | table:sbtest1, keep order:false                                 |
+	+-------------------+-------+------+-------------------------------------------------------------------+`,
+			`
+	+----------------------------+---------+-------------+------------------------------+------------------------------------------+
+	| id                         |  count  | task        | access object                | operator info                            |
+	+----------------------------+---------+-------------+------------------------------+------------------------------------------+
+	| IndexLookUp_10             |  65.68  |  root       |                              |                                          |
+	| ├─IndexRangeScan_8(Build)  |  65.68  |  cop[tikv]  | table:sbtest1, index:k_1(k)  | range:[421009,421009], keep order:false  |
+	| └─TableRowIDScan_9(Probe)  |  65.68  |  cop[tikv]  | table:sbtest1                | keep order:false                         |
+	+-----------------+-------+------+---------------------------------------------------------------------------------------------+`},
+	}
+
+	for _, ca := range cases {
+		planv3, err := ParseText(ca.sql, ca.v3, V3)
+		c.Assert(err, IsNil)
+		planv4, err := ParseText(ca.sql, ca.v4, V4)
+		c.Assert(err, IsNil)
+		reas, same := Compare(planv3, planv4, true)
 		fmt.Println(">>>> ", reas)
 		c.Assert(same, IsTrue)
 	}
@@ -274,7 +331,7 @@ func (s *parseTestSuite) TestCompareNotSame(c *C) {
 		c.Assert(err, IsNil)
 		planv4, err := ParseText(ca.sql, ca.v4, V4)
 		c.Assert(err, IsNil)
-		_, same := Compare(planv3, planv4)
+		_, same := Compare(planv3, planv4, false)
 		c.Assert(same, IsFalse)
 	}
 }
