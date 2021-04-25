@@ -214,6 +214,27 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 	|     └─TableRowIDScan_34       |  16253.86  |  cop[tikv]  |  table:shop_delay_msg_task_info                                                                |                                          |
 	+----------------------------+---------+-------------+------------------------------------------------------------------------------------------------------+------------------------------------------+`,
 		},
+		{
+		`explain select t.STATION_AGENT_ID,t.TRIGGER_USER_ID,t.OPEN_ID,t.ANALYSIS_TYPE,t.CONTENT_ID,t.COUNT_NUM,t.TIME_RANGE,t.BUSINESS_DATE         from (select * from INNOVATION_AGENT_INSIGHT_INFO info where info.BUSINESS_DATE >= DATE_FORMAT(now(), '%Y-%m-%d')) t         where           (                t.STATION_AGENT_ID = '903384112691054592'                                 and t.TRIGGER_USER_ID = 1173499267118338048                                                and t.OPEN_ID = ''                                                and t.CONTENT_ID = ''                             and t.ANALYSIS_TYPE = '00'           or               t.STATION_AGENT_ID = '851865861592759296'                                 and t.TRIGGER_USER_ID = 884210740869840896                                                and t.OPEN_ID = ''                                                and t.CONTENT_ID = ''                             and t.ANALYSIS_TYPE = '00'           or               t.STATION_AGENT_ID = '857934794383469568'                                 and t.TRIGGER_USER_ID = 707919072733736960                                                and t.OPEN_ID = ''                                                and t.CONTENT_ID = ''                             and t.ANALYSIS_TYPE = '00'           )`,
+		`
+	+------------------------+------------+-------+----------------------------------------------------------------------------------------+
+	| id                     |  count     | task  | operator info                                                                          |
+	+------------------------+------------+-------+----------------------------------------------------------------------------------------+
+	| IndexLookUp_13         |  93405.94  |  root |                                                                                        |
+	| ├─IndexScan_10         |  116757.42 |  cop  | table:info, index:business_date, range:[2021-04-21 00:00:00,+inf], keep order:false    |
+	| └─Selection_12         |  93405.94  |  cop  |                                                                                        |
+	|   └─TableScan_11       |  116757.42 |  cop  | table:innovation_agent_insight_info, keep order:false                                  |
+	+------------------------+------------+-------+----------------------------------------------------------------------------------------+`,
+		`
+	+-------------------------------+-------------+-------------+-------------------------------------------------------+------------------+
+	| id                            |  count      | task        | access object                                         |  operator info   |
+	+-------------------------------+-------------+-------------+-------------------------------------------------------+------------------+
+	| IndexLookUp_13                |  86635.94   |  root       |                                                       |                  |
+	| ├─IndexRangeScan_10(Build)    |  108294.92  |  cop[tikv]  |  table:info, index:idx_iaitio_bus_date(business_date) |                  | 
+	| └─Selection_12(Probe)         |  86635.94   |  cop[tikv]  |                                                       |                  | 
+	|   └─TableRowIDScan_11         |  108294.92  |  cop[tikv]  |  table:info                                           |                  | 
+	+-------------------------------+-------------+-------------+--------------------------------------------------------------------------+`,
+		},
 	}
 
 	for _, ca := range cases {
