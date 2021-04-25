@@ -66,31 +66,37 @@ func removeProj(node Operator) Operator {
 	return node
 }
 
+type aliasVisitor struct {
+	alias map[string]string
+}
+
+func (vis *aliasVisitor) Enter(n ast.Node) (ast.Node, bool) {
+	tbl, ok := n.(*ast.TableSource)
+	if !ok {
+		return n, false
+	}
+
+	switch v := tbl.Source.(type) {
+	case *ast.TableName:
+		if tbl.AsName.L != "" {
+			vis.alias[v.Name.L] = tbl.AsName.L
+		}
+	}
+	return n, false
+}
+
+func (vis *aliasVisitor) Leave(n ast.Node) (ast.Node, bool) {
+	return n, true
+}
+
 func fillInAlias(sql string) (alias map[string]string) {
 	alias = make(map[string]string)
 	node, err := parser.New().ParseOneStmt(sql, "", "")
 	if err != nil {
 		return
 	}
-	if exp, ok := node.(*ast.ExplainStmt); ok {
-		node = exp.Stmt
-	}
-	sel, ok := node.(*ast.SelectStmt)
-	if !ok {
-		return
-	}
-	if sel == nil || sel.From == nil {
-		return
-	}
-	switch x := sel.From.TableRefs.Left.(type) {
-	case *ast.TableSource:
-		switch v := x.Source.(type) {
-		case *ast.TableName:
-			if x.AsName.L != "" {
-				alias[v.Name.L] = x.AsName.L
-			}
-		}
-	}
+	vis := &aliasVisitor{alias}
+	node.Accept(vis)
 	return
 }
 
