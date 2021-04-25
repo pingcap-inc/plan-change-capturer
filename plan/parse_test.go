@@ -191,6 +191,29 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 	| └─TableRowIDScan_9(Probe)  |  359.02 |  cop[tikv]  |  table:a                                                                               | keep order:false                         |
 	+----------------------------+---------+-------------+----------------------------------------------------------------------------------------+------------------------------------------+
 `},
+		{
+			`select id,topic,tags,msg_keys,content,status,execute_time,delay_second,task_type,retrys,date_created,created_by,date_updated,updated_by from shop_delay_msg_task_info where task_type =02 and tags in ('LIFE_POLICY_NOTICE_TAGS','FLOW_UPLOAD_IMG_OCR_TAG','POLICY_1050_UPDATE_TAGS','ELIS_UNDER_WRITING_ORDER_TAGS','RECEIVE_BOOK_TAGS','GIFT_CALL_BACK_HDFLB_TAGS','REPORT_INSURANCE_INFO_TAGS','GIFT_CALLBACK_THIRD_AFTER_UNDER_WRITINGTAGS','GIFT_CALL_BACK_COUPONS_TAGS','USER_RISK_QUESTIONS_LOG_TAGS','PRODUCT_CREATE_BOOK_TAGS','PRODUCT_MEDICAL_PAYMENT_TAGS','GIFT_PRODUCT_ACCEPT_TAGS','GIFT_CALLBACK_TAGS','PRODUCT_MEDICAL_INSURANCE_TAGS','PRODUCT_ASYNC_UNDERWRITING_TASK','GIFT_CALLBACK_THIRD_AFTER_UNDER_WRITINGTAGS') and status in ('0','1') and retrys < 10 and execute_time < now() and topic = 'LIFE_PRODUCT_TOPIC' and date_updated > '2021-04-17 18:14:00.203' order by date_updated asc limit 5000`,
+			`
+	+------------------------+------------+-------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	| id                     |  count     | task  | operator info                                                                                                                                                                       |
+	+------------------------+------------+-------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	|  TopN_10               |  90.06     |  root | productdb.shop_delay_msg_task_info.date_updated:asc, offset:0, count:5000                                                                                                           |
+	|  └─IndexLookUp_25      |  112.57    |  root |                                                                                                                                                                                     |  
+	|    ├─IndexScan_22      |  16253.86  |  cop  | table:shop_delay_msg_task_info, index:status, tags, topic, execute_time, range:["0" "ELIS_UNDER_WRITING_ORDER_TAGS" "LIFE_PRODUCT_TOPIC" -inf,"0" "ELIS_UNDER_WRITING_ORDER_TAGS"   |
+	|    └─Selection_24      |  112.57    |  cop  | gt(productdb.shop_delay_msg_task_info.date_updated, 2021-04-17 18:14:00.203000), lt(productdb.shop_delay_msg_task_info.retrys, 10)                                                  |
+	|      └─TableScan_23    |  16253.86  |  cop  | table:shop_delay_msg_task_info, keep order:false                                                                                                                                    |
+	+------------------------+------------+-------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+`,
+			`
+	+-------------------------------+------------+-------------+------------------------------------------------------------------------------------------------+------------------------------------------+
+	| id                            |  count     | task        | access object                                                                                  | operator info                            |
+	+-------------------------------+------------+-------------+------------------------------------------------------------------------------------------------+------------------------------------------+	
+	| TopN_10                       |  124.69    |  root       |                                                                                                |                                          |
+	| └─IndexLookUp_36              |  124.69    |  root       |                                                                                                |                                          |
+	|   ├─IndexRangeScan_33(Build)  |  16253.86  |  cop[tikv]  |  table:shop_delay_msg_task_info, index:async_status_compose(status, tags, topic, execute_time) |                                          |
+	|   └─Selection_35(Probe)       |  124.69    |  cop[tikv]  |                                                                                                |                                          |
+	|     └─TableRowIDScan_34       |  16253.86  |  cop[tikv]  |  table:shop_delay_msg_task_info                                                                |                                          |
+	+----------------------------+---------+-------------+------------------------------------------------------------------------------------------------------+------------------------------------------+`,
+		},
 	}
 
 	for _, ca := range cases {
