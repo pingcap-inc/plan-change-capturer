@@ -64,13 +64,8 @@ func parseRowV4(cols []string, children []Operator) (Operator, error) {
 	case OpTypeIndexReader:
 		return IndexReaderOp{base}, nil
 	case OpTypeIndexScan:
-		kvs := splitKVs(cols[3])
-		idxStr := kvs["index"]
-		if p := strings.Index(idxStr, "("); p != -1 {
-			// only keep columns in this index: idx(ka, kb)  -->> ka, kb
-			idxStr = idxStr[p+1 : len(idxStr)-1]
-		}
-		return IndexScanOp{base, kvs["table"], idxStr}, nil
+		tbl, idx := extractTableIndexV4(cols[3])
+		return IndexScanOp{base, tbl, idx}, nil
 	case OpTypeIndexLookup:
 		return IndexLookupOp{base}, nil
 	case OpTypeSelection:
@@ -99,6 +94,25 @@ func parseRowV4(cols []string, children []Operator) (Operator, error) {
 		return SelectLock{base}, nil
 	}
 	return nil, errors.Errorf("unknown operator type %v", opID)
+}
+
+func extractTableIndexV4(info string) (tbl string, idx string) {
+	// table:a, index:idx_notice_config_id_type(user_id, notice_config_id, notice_type)
+	st, si := "table:", "index:"
+	if begin := strings.Index(info, st); begin != -1 {
+		if end := strings.Index(info[begin+len(st):], ","); end != -1 {
+			tbl = info[begin+len(st) : begin+len(st)+end] // tbl = a
+		}
+	}
+	if begin := strings.Index(info, si); begin != -1 {
+		tmp := info[begin+len(si):]
+		if begin := strings.Index(tmp, "("); begin != -1 {
+			if end := strings.Index(tmp[begin+1:], ")"); end != -1 {
+				idx = tmp[begin+1 : begin+1+end] // user_id, notice_config_id, notice_type
+			}
+		}
+	}
+	return
 }
 
 func adjustJoinChildrenV4(children []Operator) {

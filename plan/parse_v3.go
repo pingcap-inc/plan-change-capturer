@@ -66,8 +66,8 @@ func parseLineV3(cols []string, children []Operator) (Operator, error) {
 	case OpTypeIndexReader:
 		return IndexReaderOp{base}, nil
 	case OpTypeIndexScan:
-		kvs := splitKVs(cols[3])
-		return IndexScanOp{base, kvs["table"], extractIndexColumns(kvs["index"])}, nil
+		tbl, idx := extractTableIndexV3(cols[3])
+		return IndexScanOp{base, tbl, idx}, nil
 	case OpTypeIndexLookup:
 		return IndexLookupOp{base}, nil
 	case OpTypeSelection:
@@ -96,6 +96,22 @@ func parseLineV3(cols []string, children []Operator) (Operator, error) {
 		return SelectLock{base}, nil
 	}
 	return nil, errors.Errorf("unknown operator type %v", opID)
+}
+
+func extractTableIndexV3(info string) (tbl string, idx string) {
+	// table:a, index:user_id, notice_config_id, notice_type
+	st, si := "table:", "index:"
+	if begin := strings.Index(info, st); begin != -1 {
+		if end := strings.Index(info[begin+len(st):], ","); end != -1 {
+			tbl = info[begin+len(st) : begin+len(st)+end] // tbl = a
+		}
+	}
+	if begin := strings.Index(info, si); begin != -1 {
+		if end := strings.Index(info[begin+len(si):], ", range:"); end != -1 {
+			idx = info[begin+len(si) : begin+len(si)+end] // user_id, notice_config_id, notice_type
+		}
+	}
+	return
 }
 
 func adjustJoinChildrenV3(info string, children []Operator) error {
