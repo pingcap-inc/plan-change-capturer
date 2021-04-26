@@ -1,0 +1,61 @@
+explain select * FROM sbtest10 a WHERE a.k=501828
++-------------------+---------+------+------------------------------------------------------------------------------------------------------+
+| id                |  count  | task | operator info                                                                                        |
++-------------------+---------+------+------------------------------------------------------------------------------------------------------+
+| IndexLookUp_10    |  359.02 | root |                                                                                                      |
+| ├─IndexScan_8     |  359.02 | cop  | table:a, index:user_id, notice_config_id, notice_type, range:[501828,501828], keep order:false       |
+| └─TableScan_9     |  359.02 | cop  | table:sbtest10, keep order:false                                                                     |
++-------------------+---------+------+------------------------------------------------------------------------------------------------------+
++----------------------------+---------+-------------+----------------------------------------------------------------------------------------+------------------------------------------+
+| id                         |  count  | task        | access object                                                                          | operator info                            |
++----------------------------+---------+-------------+----------------------------------------------------------------------------------------+------------------------------------------+
+| IndexLookUp_10             |  359.02 |  root       |                                                                                        |                                          |
+| ├─IndexRangeScan_8(Build)  |  359.02 |  cop[tikv]  |  table:a, index:idx_notice_config_id_type(user_id, notice_config_id, notice_type)      | range:[501828,501828], keep order:false  |
+| └─TableRowIDScan_9(Probe)  |  359.02 |  cop[tikv]  |  table:a                                                                               | keep order:false                         |
++----------------------------+---------+-------------+----------------------------------------------------------------------------------------+------------------------------------------+
+
+
+
+explain select t.STATION_AGENT_ID,t.TRIGGER_USER_ID,t.OPEN_ID,t.ANALYSIS_TYPE,t.CONTENT_ID,t.COUNT_NUM,t.TIME_RANGE,t.BUSINESS_DATE         from (select * from INNOVATION_AGENT_INSIGHT_INFO info where info.BUSINESS_DATE >= DATE_FORMAT(now(), '%Y-%m-%d')) t         where           (                t.STATION_AGENT_ID = '903384112691054592'                                 and t.TRIGGER_USER_ID = 1173499267118338048                                                and t.OPEN_ID = ''                                                and t.CONTENT_ID = ''                             and t.ANALYSIS_TYPE = '00'           or               t.STATION_AGENT_ID = '851865861592759296'                                 and t.TRIGGER_USER_ID = 884210740869840896                                                and t.OPEN_ID = ''                                                and t.CONTENT_ID = ''                             and t.ANALYSIS_TYPE = '00'           or               t.STATION_AGENT_ID = '857934794383469568'                                 and t.TRIGGER_USER_ID = 707919072733736960                                                and t.OPEN_ID = ''                                                and t.CONTENT_ID = ''                             and t.ANALYSIS_TYPE = '00'           )
++------------------------+------------+-------+----------------------------------------------------------------------------------------+
+| id                     |  count     | task  | operator info                                                                          |
++------------------------+------------+-------+----------------------------------------------------------------------------------------+
+| IndexLookUp_13         |  93405.94  |  root |                                                                                        |
+| ├─IndexScan_10         |  116757.42 |  cop  | table:info, index:business_date, range:[2021-04-21 00:00:00,+inf], keep order:false    |
+| └─Selection_12         |  93405.94  |  cop  |                                                                                        |
+|   └─TableScan_11       |  116757.42 |  cop  | table:innovation_agent_insight_info, keep order:false                                  |
++------------------------+------------+-------+----------------------------------------------------------------------------------------+
+
++-------------------------------+-------------+-------------+-------------------------------------------------------+------------------+
+| id                            |  count      | task        | access object                                         |  operator info   |
++-------------------------------+-------------+-------------+-------------------------------------------------------+------------------+
+| IndexLookUp_13                |  86635.94   |  root       |                                                       |                  |
+| ├─IndexRangeScan_10(Build)    |  108294.92  |  cop[tikv]  |  table:info, index:idx_iaitio_bus_date(business_date) |                  | 
+| └─Selection_12(Probe)         |  86635.94   |  cop[tikv]  |                                                       |                  | 
+|   └─TableRowIDScan_11         |  108294.92  |  cop[tikv]  |  table:info                                           |                  | 
++-------------------------------+-------------+-------------+--------------------------------------------------------------------------+
+
+
+explain select * from t t1, t t2 where t1.a=t2.b
+	+--------------------------+----------+------+--------------------------------------------------------------------+
+	| id                       | count    | task | operator info                                                      |
+	+--------------------------+----------+------+--------------------------------------------------------------------+
+	| HashLeftJoin_13          | 12487.50 | root | inner join, inner:TableReader_17, equal:[eq(test.t1.a, test.t2.b)] |
+	| ├─TableReader_20         | 9990.00  | root | data:Selection_19                                                  |
+	| │ └─Selection_19         | 9990.00  | cop  | not(isnull(test.t1.a))                                             |
+	| │   └─TableScan_18       | 10000.00 | cop  | table:t2, range:[-inf,+inf], keep order:false, stats:pseudo        |
+	| └─TableReader_17         | 9990.00  | root | data:Selection_16                                                  |
+	|   └─Selection_16         | 9990.00  | cop  | not(isnull(test.t2.b))                                             |
+	|     └─TableScan_15       | 10000.00 | cop  | table:t1, range:[-inf,+inf], keep order:false, stats:pseudo        |
+	+--------------------------+----------+------+--------------------------------------------------------------------+
+	+------------------------------+----------+-----------+---------------+--------------------------------------------+
+	| id                           | estRows  | task      | access object | operator info                              |
+	+------------------------------+----------+-----------+---------------+--------------------------------------------+
+	| HashJoin_22                  | 12487.50 | root      |               | inner join, equal:[eq(test.t.a, test.t.b)] |
+	| ├─TableReader_26(Build)      | 9990.00  | root      |               | data:Selection_25                          |
+	| │ └─Selection_25             | 9990.00  | cop[tikv] |               | not(isnull(test.t.b))                      |
+	| │   └─TableFullScan_24       | 10000.00 | cop[tikv] | table:t1      | keep order:false, stats:pseudo             |
+	| └─TableReader_29(Probe)      | 9990.00  | root      |               | data:Selection_28                          |
+	|   └─Selection_28             | 9990.00  | cop[tikv] |               | not(isnull(test.t.a))                      |
+	|     └─TableFullScan_27       | 10000.00 | cop[tikv] | table:t2      | keep order:false, stats:pseudo             |
+	+------------------------------+----------+-----------+---------------+--------------------------------------------+
