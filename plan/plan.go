@@ -40,6 +40,14 @@ const (
 	OpTypeSelectLock
 )
 
+func OpTypeIsDataSource(opType OpType) bool {
+	switch opType {
+	case OpTypeTableReader, OpTypeIndexReader, OpTypeIndexLookup, OpTypePointGet:
+		return true
+	}
+	return false
+}
+
 func OpTypeIsJoin(opType OpType) bool {
 	switch opType {
 	case OpTypeIndexJoin, OpTypeMergeJoin, OpTypeHashJoin:
@@ -206,6 +214,7 @@ type ProjectionOp struct {
 type PointGetOp struct {
 	BaseOp
 	Batch bool
+	Table string
 }
 
 type StreamAggOp struct {

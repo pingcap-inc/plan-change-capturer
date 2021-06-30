@@ -98,7 +98,41 @@ func fillInAlias(sql string) (alias map[string]string) {
 	return
 }
 
+// a simple DS has no Selection/Agg/Join under it
+func extractDataSourceInfo(op Operator) (isSimple bool, tbl string) {
+	switch op.Type() {
+	case OpTypeTableScan:
+		return true, op.(TableScanOp).Table
+	case OpTypeIndexScan:
+		return true, op.(IndexScanOp).Table
+	case OpTypeTableReader, OpTypeIndexReader:
+		return extractDataSourceInfo(op.Children()[0])
+	case OpTypeIndexLookup:
+		simpleIdx, tbl := extractDataSourceInfo(op.Children()[0])
+		simpleTbl, _ := extractDataSourceInfo(op.Children()[1])
+		return simpleIdx && simpleTbl, tbl
+	}
+	return false, ""
+}
+
+// PointGet is always better than Table/IndexReader and IndexLookUp when accessing the same table.
+func specialHandlePointGet(op1, op2 Operator, tblAlias map[string]string) bool {
+	if !OpTypeIsDataSource(op1.Type()) || op2.Type() != OpTypePointGet {
+		return false
+	}
+	isSimple, tbl := extractDataSourceInfo(op1)
+	point := op2.(PointGetOp)
+	if isSimple && sameTable(point.Table, tbl, tblAlias) {
+		return true
+	}
+	return false
+}
+
 func compare(op1, op2 Operator, tblAlias map[string]string) (reason string, same bool) {
+	if specialHandlePointGet(op1, op2, tblAlias) {
+		return "", true
+	}
+
 	if op1.Type() != op2.Type() || op1.Task() != op2.Task() {
 		return fmt.Sprintf("different operators %v and %v", op1.ID(), op2.ID()), false
 	}
