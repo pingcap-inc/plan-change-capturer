@@ -18,7 +18,6 @@ type captureOpt struct {
 	schemaDir  string
 	DB         string
 	digestFlag bool
-	ignoreProj bool
 	tables     []string
 }
 
@@ -57,7 +56,6 @@ func newCaptureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.schemaDir, "schema-stats-dir", "", "dir to store schemas and stats")
 	cmd.Flags().StringVar(&opt.DB, "db", "mysql", "the default database when connecting to TiDB")
 	cmd.Flags().BoolVar(&opt.digestFlag, "digest-flag", false, "SQLs with the same digest only be printed once if it is true")
-	cmd.Flags().BoolVar(&opt.ignoreProj, "ignore-project", false, "if ignore all project operations in plans")
 	cmd.Flags().StringSliceVar(&opt.tables, "tables", nil, "tables to export")
 	return cmd
 }
@@ -98,7 +96,7 @@ func runCaptureOfflineMode(opt *captureOpt) error {
 	if err != nil {
 		return err
 	}
-	return capturePlanChanges(db1, db2, sqls, opt.digestFlag, opt.ignoreProj)
+	return capturePlanChanges(db1, db2, sqls, opt.digestFlag)
 }
 
 func runCaptureOnlineMode(opt *captureOpt) error {
@@ -127,10 +125,10 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 	if err != nil {
 		return err
 	}
-	return capturePlanChanges(db1, db2, sqls, opt.digestFlag, opt.ignoreProj)
+	return capturePlanChanges(db1, db2, sqls, opt.digestFlag)
 }
 
-func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestFlag, ignoreProj bool) error {
+func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestFlag bool) error {
 	fmt.Printf("begin to capture plan changes between %v and %v\n", db1.opt.version, db2.opt.version)
 	defer fmt.Printf("finish capturing plan changes\n")
 	digests := make(map[string]struct{})
@@ -173,7 +171,7 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestFlag, ignore
 				fmt.Printf("parse %v err=%v\n", sql, err)
 				continue
 			}
-			if reason, same := plan.Compare(p1, p2, ignoreProj); !same {
+			if reason, same := plan.Compare(p1, p2); !same {
 				fmt.Println("=====================================================================")
 				fmt.Println("SQL: ")
 				fmt.Println(sql)

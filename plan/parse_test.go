@@ -245,7 +245,7 @@ func (s *parseTestSuite) TestCompareSame(c *C) {
 		c.Assert(err, IsNil)
 		planv4, err := ParseText(ca.sql, ca.v4, V4)
 		c.Assert(err, IsNil)
-		reas, same := Compare(planv3, planv4, false)
+		reas, same := Compare(planv3, planv4)
 		fmt.Println(">>>> ", reas)
 		c.Assert(same, IsTrue)
 	}
@@ -302,7 +302,7 @@ func (s *parseTestSuite) TestWithoutProjCompareSame(c *C) {
 		c.Assert(err, IsNil)
 		planv4, err := ParseText(ca.sql, ca.v4, V4)
 		c.Assert(err, IsNil)
-		reas, same := Compare(planv3, planv4, true)
+		reas, same := Compare(planv3, planv4)
 		fmt.Println(">>>> ", reas)
 		c.Assert(same, IsTrue)
 	}
@@ -341,19 +341,19 @@ func (s *parseTestSuite) TestCompareNotSame(c *C) {
 	+------------------------------+----------+-----------+---------------+--------------------------------------------+`},
 		{`explain select b from t where b = 10`,
 			`
-	+------------------------+---------+-----------+---------------------+-----------------------------------------------+
-	| id                     | estRows | task      | access object       | operator info                                 |
-	+------------------------+---------+-----------+---------------------+-----------------------------------------------+
-	| IndexReader_6          | 10.00   | root      |                     | index:IndexRangeScan_5                        |
-	| └─IndexRangeScan_5     | 10.00   | cop[tikv] | table:t, index:b1(b) | range:[10,10], keep order:false, stats:pseudo |
-	+------------------------+---------+-----------+---------------------+-----------------------------------------------+`,
-			`
 	+-------------------+-------+------+-----------------------------------------------------------------+
 	| id                | count | task | operator info                                                   |
 	+-------------------+-------+------+-----------------------------------------------------------------+
 	| IndexReader_6     | 10.00 | root | index:IndexScan_5                                               |
 	| └─IndexScan_5     | 10.00 | cop  | table:t, index:b2, range:[10,10], keep order:false, stats:pseudo |
-	+-------------------+-------+------+-----------------------------------------------------------------+`},
+	+-------------------+-------+------+-----------------------------------------------------------------+`,
+			`
+	+------------------------+---------+-----------+---------------------+-----------------------------------------------+
+	| id                     | estRows | task      | access object       | operator info                                 |
+	+------------------------+---------+-----------+---------------------+-----------------------------------------------+
+	| IndexReader_6          | 10.00   | root      |                     | index:IndexRangeScan_5                        |
+	| └─IndexRangeScan_5     | 10.00   | cop[tikv] | table:t, index:b1(b) | range:[10,10], keep order:false, stats:pseudo |
+	+------------------------+---------+-----------+---------------------+-----------------------------------------------+`},
 		{`explain select * from t where b = 10`,
 			`
 	+-------------------------------+---------+-----------+---------------------+-----------------------------------------------+
@@ -373,12 +373,13 @@ func (s *parseTestSuite) TestCompareNotSame(c *C) {
 	+-------------------+-------+------+-----------------------------------------------------------------+`},
 	}
 
-	for _, ca := range cases {
+	for i, ca := range cases {
 		planv3, err := ParseText(ca.sql, ca.v3, V3)
 		c.Assert(err, IsNil)
 		planv4, err := ParseText(ca.sql, ca.v4, V4)
 		c.Assert(err, IsNil)
-		_, same := Compare(planv3, planv4, false)
+		rea, same := Compare(planv3, planv4)
+		fmt.Println(">>>>>>>>>>>> ", i, rea, same)
 		c.Assert(same, IsFalse)
 	}
 }
