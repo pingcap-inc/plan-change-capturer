@@ -7,10 +7,9 @@ import (
 var (
 	rootCmd = &cobra.Command{
 		Use:   "plan-change-capturer",
-		Short: "A generator for Cobra based Applications",
-		Long: `Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+		Short: "A tool used to capture plan changes among different versions of TiDB",
+		Long: `PCC(plan-change-capturer) is a tool used to capture plan changes among different versions of TiDB.
+Please see the tutorial for more information(https://docs.google.com/document/d/10gOlEylBfexiTs3Ysocpvgc8so8NRJIYb5l4a9WYtbY/edit?usp=sharing).`,
 	}
 )
 
@@ -21,7 +20,7 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize()
-	rootCmd.AddCommand(newVersionCmd())
+	//rootCmd.AddCommand(newVersionCmd())
 	rootCmd.AddCommand(newExportCmd())
 	rootCmd.AddCommand(newImportCmd())
 	rootCmd.AddCommand(newCaptureCmd())
