@@ -78,7 +78,7 @@ func check(sql, v1, p1, v2, p2 string) error {
 	if err != nil {
 		return err
 	}
-	reas, same := plan.Compare(plan1, plan2, true)
+	reas, same := plan.Compare(plan1, plan2)
 	if !same {
 		fmt.Println("==============================================================================")
 		fmt.Println("SQL: ", sql)
