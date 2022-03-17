@@ -61,16 +61,19 @@ func (db *tidbHandler) getTables(dbName string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("switch to DB: %v error: %v", dbName, err)
 	}
-	rows, err := db.db.Query("show tables")
+	rows, err := db.db.Query("show full tables")
 	if err != nil {
 		return nil, fmt.Errorf("execute show tables error: %v", err)
 	}
 	defer rows.Close()
 	tables := make([]string, 0, 8)
 	for rows.Next() {
-		var table string
-		if err := rows.Scan(&table); err != nil {
+		var table, tableType string
+		if err := rows.Scan(&table, &tableType); err != nil {
 			return nil, fmt.Errorf("scan rows error: %v", err)
+		}
+		if strings.ToLower(strings.TrimSpace(tableType)) == "view" {
+			continue
 		}
 		tables = append(tables, table)
 	}
