@@ -3,6 +3,7 @@ package cmd
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -204,8 +205,9 @@ func statsPath(db, table, dir string) string {
 	return path.Join(dir, fmt.Sprintf("stats-%v-%v.json", db, table))
 }
 
-func parseDBTables(dir string) (map[string][]string, error) {
+func parseDBTables(dir string) (map[string][]string, map[string][]string, error) {
 	dbTables := make(map[string][]string)
+	dbViews := make(map[string][]string)
 	exists := make(map[string]struct{})
 	err := filepath.Walk(dir, func(fpath string, info os.FileInfo, err error) error {
 		if info.IsDir() {
@@ -225,12 +227,24 @@ func parseDBTables(dir string) (map[string][]string, error) {
 			if _, ok := exists[db+"."+table]; ok {
 				return nil
 			}
+
+			schemaPath := schemaPath(db, table, dir)
+			schemaSQL, err := ioutil.ReadFile(schemaPath)
+			if err != nil {
+				return fmt.Errorf("read schema info from %v error: %v", schemaPath, err)
+			}
+			isView := strings.Contains(strings.ToLower(string(schemaSQL)), " view ")
+
+			if isView {
+				dbViews[db] = append(dbViews[db], table)
+			} else {
+				dbTables[db] = append(dbTables[db], table)
+			}
 			exists[db+"."+table] = struct{}{}
-			dbTables[db] = append(dbTables[db], table)
 		}
 		return nil
 	})
-	return dbTables, err
+	return dbTables, dbViews, err
 }
 
 func stringSliceToMap(strs []string) map[string]struct{} {
