@@ -58,29 +58,36 @@ func importSchemaStats(db *tidbHandler, specDB, dir string) error {
 			continue
 		}
 		for _, tableName := range tables {
-			if err = importSchemas(db, dbName, tableName, dir); err != nil {
+			var isView bool
+			if isView, err = importSchemas(db, dbName, tableName, dir); err != nil {
 				return fmt.Errorf("import schemas error: %v", err)
 			}
-			if err = importStats(db, dbName, tableName, dir); err != nil {
-				return fmt.Errorf("import statistics information error: %v", err)
+			if !isView {
+				if err = importStats(db, dbName, tableName, dir); err != nil {
+					return fmt.Errorf("import statistics information error: %v", err)
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func importSchemas(db *tidbHandler, dbName, table, dir string) error {
+func importSchemas(db *tidbHandler, dbName, table, dir string) (bool, error) {
 	schemaPath := schemaPath(dbName, table, dir)
 	schemaSQL, err := ioutil.ReadFile(schemaPath)
 	if err != nil {
-		return fmt.Errorf("read schema info from %v error: %v", schemaPath, err)
+		return false, fmt.Errorf("read schema info from %v error: %v", schemaPath, err)
 	}
 	if err := db.execute(fmt.Sprintf("create database if not exists `%v`", dbName),
 		fmt.Sprintf("use %v", dbName), string(schemaSQL)); err != nil {
-		return err
+		return false, err
+	}
+	isView := false
+	if strings.Contains(strings.ToLower(string(schemaSQL)), " view ") {
+		isView = true
 	}
 	fmt.Printf("import schemas from %v successfully\n", schemaPath)
-	return nil
+	return isView, nil
 }
 
 func importStats(db *tidbHandler, dbName, table, dir string) error {
