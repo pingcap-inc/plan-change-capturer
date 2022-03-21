@@ -106,7 +106,7 @@ func (db *tidbHandler) getTableAndViews(dbName string) ([]string, []string, erro
 	return tables, views, nil
 }
 
-func (db *tidbHandler) getVersion() (string, error) {
+func (db *tidbHandler) getVersion(shortName bool) (string, error) {
 	rows, err := db.db.Query("select version()")
 	if err != nil {
 		return "", fmt.Errorf("execute `select version()` error: %v", err)
@@ -117,6 +117,10 @@ func (db *tidbHandler) getVersion() (string, error) {
 	if err := rows.Scan(&ver); err != nil {
 		return "", fmt.Errorf("read version error: %v", err)
 	}
+	if !shortName {
+		return ver, nil
+	}
+
 	fields := strings.Split(ver, "-")
 	return fields[len(fields)-1], nil
 }

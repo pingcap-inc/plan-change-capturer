@@ -129,7 +129,16 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 }
 
 func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestFlag bool) error {
-	fmt.Printf("begin to capture plan changes between %v and %v\n", db1.opt.version, db2.opt.version)
+	ver1, err := db1.getVersion(false)
+	if err != nil {
+		return err
+	}
+	ver2, err := db2.getVersion(false)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("begin to capture plan changes between %v and %v\n", ver1, ver2)
 	defer fmt.Printf("finish capturing plan changes\n")
 	digests := make(map[string]struct{})
 	for _, sql := range sqls {

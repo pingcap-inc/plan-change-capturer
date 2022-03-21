@@ -58,7 +58,7 @@ func runExportStmtSummary(opt *exportOpt) error {
 	if err != nil {
 		return fmt.Errorf("connect to DB error: %v", err)
 	}
-	ver, err := db.getVersion()
+	ver, err := db.getVersion(true)
 	if err != nil {
 		return fmt.Errorf("get DB version error: %v", err)
 	}
