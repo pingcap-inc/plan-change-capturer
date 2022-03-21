@@ -256,6 +256,7 @@ func scanQueryFile(filepath string) ([]Query, error) {
 		return nil, fmt.Errorf("read %v error:%v", filepath, err)
 	}
 
+	var filtered []Query
 	for _, q := range qs {
 		if matchPrefixCaseInsensitive(q.SQL, "select") {
 			q.SQL = "explain " + q.SQL
@@ -268,9 +269,10 @@ func scanQueryFile(filepath string) ([]Query, error) {
 		} else {
 			continue // ignore all DML SQLs
 		}
+		filtered = append(filtered, q)
 	}
 
-	return qs, nil
+	return filtered, nil
 }
 
 func matchPrefixCaseInsensitive(sql, prefix string) bool {
