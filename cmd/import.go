@@ -53,6 +53,9 @@ func importSchemaStats(db *tidbHandler, specDB, dir string) error {
 	for db, tbls := range dbTables {
 		fmt.Printf("[PCC]: DB=%v, tables=%v\n", db, tbls)
 	}
+	for db, vs := range dbViews {
+		fmt.Printf("[PCC]: DB=%v, tables=%v\n", db, vs)
+	}
 	for dbName, tables := range dbTables {
 		if specDB != "" && strings.ToLower(dbName) != strings.ToLower(specDB) {
 			continue
