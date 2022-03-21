@@ -40,6 +40,7 @@ func newImportCmd() *cobra.Command {
 }
 
 func importSchemaStats(db *tidbHandler, specDB, dir string) error {
+	fmt.Printf("[PCC]: import schemas and stats from %v\n", dir)
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
 		fmt.Println("[PCC]: no schema-stats-dir, skip import")
@@ -48,6 +49,9 @@ func importSchemaStats(db *tidbHandler, specDB, dir string) error {
 	dbTables, err := parseDBTables(dir)
 	if err != nil {
 		return fmt.Errorf("parse db and tables from %v error: %v", dir, err)
+	}
+	for db, tbls := range dbTables {
+		fmt.Printf("[PCC]: DB=%v, tables=%v\n", db, tbls)
 	}
 	for dbName, tables := range dbTables {
 		if specDB != "" && strings.ToLower(dbName) != strings.ToLower(specDB) {

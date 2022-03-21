@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +30,26 @@ type tidbAccessOptions struct {
 	user       string
 	password   string
 	version    string
+}
+
+func (opt *tidbAccessOptions) IntPort() int {
+	if opt.port != "" {
+		p, err := strconv.Atoi(opt.port)
+		if err == nil {
+			return p
+		}
+	}
+	return 0
+}
+
+func (opt *tidbAccessOptions) IntStatusPort() int {
+	if opt.statusPort != "" {
+		p, err := strconv.Atoi(opt.statusPort)
+		if err == nil {
+			return p
+		}
+	}
+	return 0
 }
 
 type tidbHandler struct {
@@ -119,7 +140,9 @@ func startAndConnectDB(opt tidbAccessOptions, defaultDB string) (*tidbHandler, e
 	if opt.version == "" {
 		return nil, fmt.Errorf("no TiDB version")
 	}
-	p, port, status := instance.StartTiDB(opt.version)
+	p, port, status := instance.StartTiDB(opt.version, opt.IntPort(), opt.IntStatusPort())
+	fmt.Printf("[PCC]: start TiDB ver=%v, port=%v, statusPort=%v \n", opt.version, port, status)
+
 	opt.port = fmt.Sprintf("%v", port)
 	opt.statusPort = fmt.Sprintf("%v", status)
 	opt.user = "root"

@@ -37,7 +37,7 @@ func base62Tag() string {
 	return string(b)
 }
 
-func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
+func StartTiDB(ver string, port, statusPort int) ( *localdata.Process, int, int) {
 	fmt.Printf("Try to start tidb:%v ... \n", ver)
 	env := environment.GlobalEnv()
 	component, version := environment.ParseCompVersion(fmt.Sprintf("tidb:%v", ver))
@@ -51,8 +51,12 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 		instanceDir = env.LocalPath(localdata.DataParentDir, tag)
 	}
 
-	port = utils.MustGetFreePort("0.0.0.0", 4000)
-	statusPort = utils.MustGetFreePort("0.0.0.0", 10080)
+	if port == 0 {
+		port = utils.MustGetFreePort("0.0.0.0", 4000)
+	}
+	if statusPort == 0 {
+		statusPort = utils.MustGetFreePort("0.0.0.0", 10080)
+	}
 	args := []string{fmt.Sprintf("-P=%v", port), fmt.Sprintf("-status=%v", statusPort), fmt.Sprintf("-path=%v", tmpPathDir())}
 	prepCmds := &exec.PrepareCommandParams{
 		Ctx:          context.Background(),
@@ -74,7 +78,7 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 	}
 
 	c.Stdout = new(slicer)
-	p = &localdata.Process{
+	p := &localdata.Process{
 		Component:   component,
 		CreatedTime: time.Now().Format(time.RFC3339),
 		Exec:        c.Args[0],
@@ -94,7 +98,7 @@ func StartTiDB(ver string) (p *localdata.Process, port, statusPort int) {
 	p.Pid = p.Cmd.Process.Pid
 	time.Sleep(time.Second * 5) // wait few minutes
 	fmt.Printf("Start tidb:%v successfully with args: %v\n", ver, args)
-	return
+	return p, port, statusPort
 }
 
 func StopTiDB(p *localdata.Process) {
