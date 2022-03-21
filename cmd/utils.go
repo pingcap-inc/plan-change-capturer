@@ -56,28 +56,33 @@ func (db *tidbHandler) getDBs() ([]string, error) {
 	return dbs, nil
 }
 
-func (db *tidbHandler) getTables(dbName string) ([]string, error) {
+func (db *tidbHandler) getTableAndViews(dbName string) ([]string, []string, error) {
 	_, err := db.db.Exec("use " + dbName)
 	if err != nil {
-		return nil, fmt.Errorf("switch to DB: %v error: %v", dbName, err)
+		return nil, nil, fmt.Errorf("switch to DB: %v error: %v", dbName, err)
 	}
 	rows, err := db.db.Query("show full tables")
 	if err != nil {
-		return nil, fmt.Errorf("execute show tables error: %v", err)
+		return nil, nil, fmt.Errorf("execute show tables error: %v", err)
 	}
 	defer rows.Close()
 	tables := make([]string, 0, 8)
+	views := make([]string, 0, 8)
 	for rows.Next() {
 		var table, tableType string
 		if err := rows.Scan(&table, &tableType); err != nil {
-			return nil, fmt.Errorf("scan rows error: %v", err)
+			return nil, nil, fmt.Errorf("scan rows error: %v", err)
 		}
-		if strings.ToLower(strings.TrimSpace(tableType)) == "view" {
+		switch strings.ToLower(strings.TrimSpace(tableType)) {
+		case "view":
+			views = append(views, table)
+		case "base table":
+			tables = append(tables, table)
+		default:
 			continue
 		}
-		tables = append(tables, table)
 	}
-	return tables, nil
+	return tables, views, nil
 }
 
 func (db *tidbHandler) getVersion() (string, error) {

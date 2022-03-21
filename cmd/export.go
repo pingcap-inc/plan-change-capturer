@@ -125,26 +125,36 @@ func runExportSchemaStats(opt *exportOpt) error {
 	return exportSchemaStats(db, opt.dir, opt.specDB, opt.tables)
 }
 
-func exportSchemaStats(db *tidbHandler, dir, specDB string, tables []string) error {
+func exportSchemaStats(db *tidbHandler, dir, specDB string, tablesWhiteList []string) error {
 	dbs, err := db.getDBs()
 	if err != nil {
 		return fmt.Errorf("get databases error: %v", err)
 	}
-	tablesMap := stringSliceToMap(tables)
+
+	hitWhiteList := func(tableName string) bool {
+		if len(tablesWhiteList) == 0 {
+			return true
+		}
+		for _, t := range tablesWhiteList {
+			if strings.ToLower(t) == strings.ToLower(tableName) {
+				return true
+			}
+		}
+		return false
+	}
+
 	for _, dbName := range dbs {
 		if specDB != "" && strings.ToLower(dbName) != strings.ToLower(specDB) {
 			continue
 		}
 
-		tables, err := db.getTables(dbName)
+		tables, views, err := db.getTableAndViews(dbName)
 		if err != nil {
 			return fmt.Errorf("get tables from DB: %v, error: %v", dbName, err)
 		}
 		for _, tableName := range tables {
-			if len(tablesMap) > 0 {
-				if _, ok := tablesMap[tableName]; !ok {
-					continue
-				}
+			if !hitWhiteList(tableName) {
+				continue
 			}
 			if err := exportTableSchemas(db, dbName, tableName, dir); err != nil {
 				return fmt.Errorf("export table: %v schema error: %v", tableName, err)
@@ -153,8 +163,44 @@ func exportSchemaStats(db *tidbHandler, dir, specDB string, tables []string) err
 				return fmt.Errorf("export table: %v stats error: %v", tableName, err)
 			}
 		}
+		for _, viewName := range views {
+			if !hitWhiteList(viewName) {
+				continue
+			}
+			if err := exportViewSchemas(db, dbName, viewName, dir); err != nil {
+				return fmt.Errorf("export table: %v schema error: %v", viewName, err)
+			}
+		}
 	}
 	return nil
+}
+
+func exportViewSchemas(db *tidbHandler, dbName, view, dir string) error {
+	showSQL := fmt.Sprintf("show create view `%v`.`%v`", dbName, view)
+	rows, err := db.db.Query(showSQL)
+	if err != nil {
+		return fmt.Errorf("exec SQL: %v error: %v", showSQL, err)
+	}
+	defer rows.Close()
+	rows.Next()
+	var v, createSQL, charc, coll string
+	if err := rows.Scan(&v, &createSQL, &charc, &coll); err != nil {
+		return fmt.Errorf("scan rows error: %v", err)
+	}
+
+	// remove privilege information
+	//  CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW `tv` (`a+1`) AS SELECT `a`+1 AS `a+1` FROM `test`.`t`
+	//  --> CREATE VIEW `tv` (`a+1`) AS SELECT `a`+1 AS `a+1` FROM `test`.`t`
+	viewIdx := strings.Index(createSQL, " VIEW ")
+	if viewIdx != -1 {
+		createSQL = "CREATE" + createSQL[viewIdx:]
+	}
+
+	fpath := schemaPath(dbName, view, dir)
+	err = ioutil.WriteFile(fpath, []byte(createSQL), 0666)
+	fmt.Printf("export schema of %v.%v into %v\n", dbName, view, fpath)
+	return err
+
 }
 
 func exportTableSchemas(db *tidbHandler, dbName, table, dir string) error {
@@ -165,8 +211,8 @@ func exportTableSchemas(db *tidbHandler, dbName, table, dir string) error {
 	}
 	defer rows.Close()
 	rows.Next()
-	var createSQL string
-	if err := rows.Scan(&table, &createSQL); err != nil {
+	var tbl, createSQL string
+	if err := rows.Scan(&tbl, &createSQL); err != nil {
 		return fmt.Errorf("scan rows error: %v", err)
 	}
 
