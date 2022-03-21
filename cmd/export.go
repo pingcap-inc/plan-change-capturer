@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"bufio"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -74,9 +74,9 @@ func runExportStmtSummary(opt *exportOpt) error {
 }
 
 func exportQueriesFromStmtSummary(db *tidbHandler, specDB, dstFile string) error {
-	query := `SELECT QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%'`
+	query := `SELECT SCHEMA_NAME, QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%'`
 	if specDB != "" {
-		query = `SELECT QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%' AND SCHEMA_NAME='` + specDB + `'`
+		query = `SELECT SCHEMA_NAME, QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%' AND SCHEMA_NAME='` + specDB + `'`
 	}
 
 	rows, err := db.db.Query(query)
@@ -84,13 +84,16 @@ func exportQueriesFromStmtSummary(db *tidbHandler, specDB, dstFile string) error
 		return fmt.Errorf("select queries from information_schema.cluster_statements_summary_history error: %v", err)
 	}
 	defer rows.Close()
-	var queries []string
+	var qs []Query
 	for rows.Next() {
-		var query string
-		if err := rows.Scan(&query); err != nil {
+		var schema, query string
+		if err := rows.Scan(&schema, &query); err != nil {
 			return fmt.Errorf("scan result error: %v", err)
 		}
-		queries = append(queries, query)
+		qs = append(qs, Query{
+			Schema: schema,
+			SQL:    query,
+		})
 	}
 
 	file, err := os.OpenFile(dstFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
@@ -98,14 +101,12 @@ func exportQueriesFromStmtSummary(db *tidbHandler, specDB, dstFile string) error
 		return err
 	}
 	defer file.Close()
-	buf := bufio.NewWriter(file)
-	for _, q := range queries {
-		if _, err := buf.Write([]byte(q + ";\n")); err != nil {
-			return err
-		}
+	jdata, err := json.Marshal(qs)
+	if err != nil {
+		return fmt.Errorf("export queries error: %v", err)
 	}
-	if err := buf.Flush(); err != nil {
-		return err
+	if err := ioutil.WriteFile(dstFile, jdata, 0666); err != nil {
+		return fmt.Errorf("export queries error: %v", err)
 	}
 	fmt.Printf("export queries from statement_summary into %v successfully\n", dstFile)
 	return nil

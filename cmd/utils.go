@@ -247,10 +247,7 @@ func parseDBTables(dir string) (map[string][]string, map[string][]string, error)
 	return dbTables, dbViews, err
 }
 
-func stringSliceToMap(strs []string) map[string]struct{} {
-	m := make(map[string]struct{}, len(strs))
-	for _, str := range strs {
-		m[str] = struct{}{}
-	}
-	return m
+type Query struct {
+	Schema string `json:"schema"`
+	SQL    string `json:"sql"`
 }

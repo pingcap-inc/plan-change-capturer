@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -128,7 +129,7 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 	return capturePlanChanges(db1, db2, sqls, opt.digestFlag)
 }
 
-func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestFlag bool) error {
+func capturePlanChanges(db1, db2 *tidbHandler, qs []Query, digestFlag bool) error {
 	ver1, err := db1.getVersion(false)
 	if err != nil {
 		return err
@@ -141,7 +142,21 @@ func capturePlanChanges(db1, db2 *tidbHandler, sqls []string, digestFlag bool) e
 	fmt.Printf("begin to capture plan changes between %v and %v\n", ver1, ver2)
 	defer fmt.Printf("finish capturing plan changes\n")
 	digests := make(map[string]struct{})
-	for _, sql := range sqls {
+
+	currentSchema := ""
+	for _, q := range qs {
+		if strings.ToLower(currentSchema) != strings.ToLower(q.Schema) {
+			if _, err := db1.db.Exec("use " + q.Schema); err != nil {
+				fmt.Printf("[PCC] run `use %v` for %v error=%v\n", q.Schema, q.SQL, err)
+				continue
+			}
+			if _, err := db2.db.Exec("use " + q.Schema); err != nil {
+				fmt.Printf("[PCC] run `use %v` for %v error=%v\n", q.Schema, q.SQL, err)
+				continue
+			}
+		}
+
+		sql := q.SQL
 		if matchPrefixCaseInsensitive(sql, "use") {
 			if _, err := db1.db.Exec(sql); err != nil {
 				return err
@@ -231,36 +246,31 @@ func runExplain(h *tidbHandler, explainSQL string) ([][]string, error) {
 	return results, nil
 }
 
-func scanQueryFile(filepath string) ([]string, error) {
+func scanQueryFile(filepath string) ([]Query, error) {
 	data, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}
+	var qs []Query
+	if err := json.Unmarshal(data, &qs); err != nil {
+		return nil, fmt.Errorf("read %v error:%v", filepath, err)
+	}
 
-	sqls := strings.Split(string(data), ";")
-	i := 0
-	for _, sql := range sqls {
-		sql = strings.TrimSpace(sql)
-		if len(sql) == 0 {
-			continue
-		}
-
-		if matchPrefixCaseInsensitive(sql, "select") {
-			sql = "explain " + sql
-		} else if matchPrefixCaseInsensitive(sql, "explain analyze select") {
-			sql = "explain " + sql[len("explain analyze "):]
-		} else if matchPrefixCaseInsensitive(sql, "explain select") {
+	for _, q := range qs {
+		if matchPrefixCaseInsensitive(q.SQL, "select") {
+			q.SQL = "explain " + q.SQL
+		} else if matchPrefixCaseInsensitive(q.SQL, "explain analyze select") {
+			q.SQL = "explain " + q.SQL[len("explain analyze "):]
+		} else if matchPrefixCaseInsensitive(q.SQL, "explain select") {
 			// do nothing
-		} else if matchPrefixCaseInsensitive(sql, "use") {
+		} else if matchPrefixCaseInsensitive(q.SQL, "use") {
 			// change database, do nothing
 		} else {
 			continue // ignore all DML SQLs
 		}
-
-		sqls[i] = sql + ";"
-		i++
 	}
-	return sqls[:i], nil
+
+	return qs, nil
 }
 
 func matchPrefixCaseInsensitive(sql, prefix string) bool {
