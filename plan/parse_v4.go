@@ -93,6 +93,8 @@ func parseRowV4(cols []string, children []Operator) (Operator, error) {
 		return TableDual{base}, nil
 	case OpTypeSelectLock:
 		return SelectLock{base}, nil
+	case OpTypeShow:
+		return ShowOp{base}, nil
 	}
 	return nil, errors.Errorf("unknown operator type %v", opID)
 }
