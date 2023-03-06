@@ -25,4 +25,5 @@ func init() {
 	rootCmd.AddCommand(newImportCmd())
 	rootCmd.AddCommand(newCaptureCmd())
 	rootCmd.AddCommand(newCheckCmd())
+	rootCmd.AddCommand(newLoadCmd())
 }

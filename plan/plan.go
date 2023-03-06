@@ -38,6 +38,7 @@ const (
 	OpTypeTopN
 	OpTypeTableDual
 	OpTypeSelectLock
+	OpTypeShow
 )
 
 func OpTypeIsDataSource(opType OpType) bool {
@@ -78,9 +79,12 @@ const (
 )
 
 type Plan struct {
-	SQL  string
-	Ver  PlanVer
-	Root Operator
+	Schema string
+	SQL    string
+	Ver    PlanVer
+	Root   Operator
+
+	PlanText string
 }
 
 func (p Plan) Format() string {
@@ -250,5 +254,9 @@ type TableDual struct {
 }
 
 type SelectLock struct {
+	BaseOp
+}
+
+type ShowOp struct {
 	BaseOp
 }
