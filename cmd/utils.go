@@ -31,6 +31,10 @@ type tidbAccessOptions struct {
 	user       string
 	password   string
 	version    string
+	tls        bool
+	cacert     string
+	cert       string
+	key        string
 }
 
 func (opt *tidbAccessOptions) IntPort() int {
@@ -166,9 +170,9 @@ func connectDB(opt tidbAccessOptions, defaultDB string) (*tidbHandler, error) {
 	if defaultDB == "" {
 		defaultDB = "mysql"
 	}
-	dns := fmt.Sprintf("%s:%s@tcp(%s:%s)/%v?allowAllFiles=true", opt.user, opt.password, opt.addr, opt.port, defaultDB)
+	dns := fmt.Sprintf("%s:%s@tcp(%s:%s)/%v", opt.user, opt.password, opt.addr, opt.port, defaultDB)
 	if opt.password == "" {
-		dns = fmt.Sprintf("%s@tcp(%s:%s)/%v?allowAllFiles=true", opt.user, opt.addr, opt.port, defaultDB)
+		dns = fmt.Sprintf("%s@tcp(%s:%s)/%v", opt.user, opt.addr, opt.port, defaultDB)
 	}
 	db, err := sql.Open("mysql", dns)
 	if err != nil {
