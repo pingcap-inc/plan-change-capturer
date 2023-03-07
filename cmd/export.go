@@ -56,12 +56,6 @@ func newExportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.db.cacert, "cacert", "", "CA certificate to verify peer against (SSL)")
 	cmd.Flags().StringVar(&opt.db.cert, "cert", "", "Client certificate file and password (SSL)")
 	cmd.Flags().StringVar(&opt.db.key, "key", "", "Private key file name (SSL/SSH)")
-	/*
-	      36  curl --cacert .tiup/storage/cluster/clusters/debug/tls/ca.crt
-	   --cert .tiup/storage/cluster/clusters/debug/tls/client.crt
-	   --key .tiup/storage/cluster/clusters/debug/tls/client.pem
-	   https://pd-1-peer:2379/pd/api/v1/config
-	*/
 	return cmd
 }
 
