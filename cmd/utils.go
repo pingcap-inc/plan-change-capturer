@@ -174,6 +174,17 @@ func connectDB(opt tidbAccessOptions, defaultDB string) (*tidbHandler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect to database dns:%v, error: %v", dns, err)
 	}
+	for i := 0; i < 10; i++ {
+		if err = db.Ping(); err != nil {
+			fmt.Printf("ping DB %v error: %v, retrying", dns, err)
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ping DB %v error: %v, retrying", dns, err)
+	}
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("ping DB %v error: %v", dns, err)
 	}
