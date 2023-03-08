@@ -46,6 +46,16 @@ func runLoadCompareInOfflineMode(opt *loadOpt) error {
 	if len(opt.path) < 1 {
 		return fmt.Errorf("pcc packge should be given")
 	}
+	paths := strings.Split(opt.path, ",")
+
+	zrs, err := loadAllPackages(paths)
+	if err != nil {
+		return err
+	}
+	plans, err := parsePlanFromPackages(zrs)
+	if err != nil {
+		return err
+	}
 	db1, err = startAndConnectDB(opt.db1, "test")
 	if err != nil {
 		return fmt.Errorf("start and connect to DB error: %v", err)
@@ -55,11 +65,45 @@ func runLoadCompareInOfflineMode(opt *loadOpt) error {
 		db1.stop()
 		fmt.Println("database closed")
 	}()
-	if err := loadAndImport(db1, opt.path, opt.targetFile); err != nil {
+	if err := importAllSchemaAndStats(db1, zrs); err != nil {
 		return err
 	}
-	fmt.Println("load extract plan package and compare success")
+	newPlans, err := explainSQLsAndCompare(db1, plans)
+	if err != nil {
+		fmt.Println("explain sqls failed, err:", err.Error())
+		return err
+	}
+	fmt.Println("explain sqls and compare success")
+	result := comparePlan(plans, newPlans, db1.opt.version)
+	if err := dumpResultsIntoTargetFile(opt.targetFile, result); err != nil {
+		fmt.Println("dump result failed, err:", err.Error())
+	}
+	fmt.Println("dump result success")
 	return nil
+}
+
+func loadAllPackages(paths []string) ([]*zip.Reader, error) {
+	zrs := make([]*zip.Reader, 0)
+	for _, path := range paths {
+		zr, err := loadExtractPlanPackage(path)
+		if err != nil {
+			return nil, err
+		}
+		zrs = append(zrs, zr)
+	}
+	return zrs, nil
+}
+
+func parsePlanFromPackages(zrs []*zip.Reader) ([]plan.Plan, error) {
+	plans := make([]plan.Plan, 0)
+	for _, zr := range zrs {
+		subPlans, err := loadSQLsAndPlans(zr, "")
+		if err != nil {
+			return nil, err
+		}
+		plans = append(plans, subPlans...)
+	}
+	return plans, nil
 }
 
 func explainSQLsAndCompare(db *tidbHandler, originPlans []plan.Plan) ([]plan.Plan, error) {
@@ -91,39 +135,19 @@ func getPlanText(explainRows [][]string) string {
 	return strings.Join(rows, "\n")
 }
 
-func loadAndImport(db *tidbHandler, path string, targetFile string) error {
-	zr, err := loadExtractPlanPackage(path)
-	if err != nil {
-		fmt.Println("load extract plan package failed, err:", err.Error())
-		return err
+func importAllSchemaAndStats(db *tidbHandler, zrs []*zip.Reader) error {
+	for _, zr := range zrs {
+		if err := importSchemaFromExtractPlan(db, zr); err != nil {
+			fmt.Println("import schema failed, err:", err.Error())
+			return err
+		}
+		fmt.Println("import schema success")
+		if err := importStatsFromExtractPlan(db, zr); err != nil {
+			fmt.Println("import stats failed, err:", err.Error())
+			return err
+		}
+		fmt.Println("import stats success")
 	}
-	plans, err := loadSQLsAndPlans(zr, path)
-	if err != nil {
-		fmt.Println("load sqls and plans failed, err:", err.Error())
-		return err
-	}
-	fmt.Println("parse origin sql and plans success ", len(plans))
-	if err := importSchemaFromExtractPlan(db, zr); err != nil {
-		fmt.Println("import schema failed, err:", err.Error())
-		return err
-	}
-	fmt.Println("import schema success")
-	if err := importStatsFromExtractPlan(db, zr); err != nil {
-		fmt.Println("import stats failed, err:", err.Error())
-		return err
-	}
-	fmt.Println("import stats success")
-	newPlans, err := explainSQLsAndCompare(db, plans)
-	if err != nil {
-		fmt.Println("explain sqls failed, err:", err.Error())
-		return err
-	}
-	fmt.Println("explain sqls and compare success")
-	result := comparePlan(plans, newPlans, db.opt.version)
-	if err := dumpResultsIntoTargetFile(targetFile, result); err != nil {
-		fmt.Println("dump result failed, err:", err.Error())
-	}
-	fmt.Println("dump result success")
 	return nil
 }
 
@@ -372,7 +396,9 @@ func createSchemaAndItems(db *tidbHandler, f *zip.File) error {
 		return err
 	}
 	if err := db.execute(createTableSQL); err != nil {
-		return err
+		if !strings.Contains(err.Error(), "already exists") {
+			return err
+		}
 	}
 	return nil
 }
