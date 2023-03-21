@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -50,6 +52,10 @@ func newExportCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opt.specDB, "db", "", "DB to export, only export schema/stats of tables in this DB")
 	cmd.Flags().StringSliceVar(&opt.tables, "tables", nil, "tables to export, if nil export all tables' schema and stats (only for schema_stats mode)")
 	cmd.Flags().StringVar(&opt.queryFile, "query-file", "", "file path to store queries (only for stmt_summary mode)")
+	cmd.Flags().BoolVar(&opt.db.tls, "tls", false, "cluster enable tls")
+	cmd.Flags().StringVar(&opt.db.cacert, "cacert", "", "CA certificate to verify peer against (SSL)")
+	cmd.Flags().StringVar(&opt.db.cert, "cert", "", "Client certificate file and password (SSL)")
+	cmd.Flags().StringVar(&opt.db.key, "key", "", "Private key file name (SSL/SSH)")
 	return cmd
 }
 
@@ -74,9 +80,9 @@ func runExportStmtSummary(opt *exportOpt) error {
 }
 
 func exportQueriesFromStmtSummary(db *tidbHandler, specDB, dstFile string) error {
-	query := `SELECT SCHEMA_NAME, QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%'`
+	query := `SELECT SCHEMA_NAME, QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%' and SCHEMA_NAME != NULL`
 	if specDB != "" {
-		query = `SELECT SCHEMA_NAME, QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE lower(QUERY_SAMPLE_TEXT) LIKE '%select%' AND SCHEMA_NAME='` + specDB + `'`
+		query = `SELECT SCHEMA_NAME, QUERY_SAMPLE_TEXT FROM information_schema.cluster_statements_summary_history WHERE SCHEMA_NAME != NULL and lower(QUERY_SAMPLE_TEXT) LIKE '%select%' AND SCHEMA_NAME='` + specDB + `'`
 	}
 
 	rows, err := db.db.Query(query)
@@ -224,19 +230,57 @@ func exportTableSchemas(db *tidbHandler, dbName, table, dir string) error {
 }
 
 func exportTableStats(db *tidbHandler, dbName, table, dir string) error {
-	addr := fmt.Sprintf("http://%v:%v/stats/dump/%v/%v", db.opt.addr, db.opt.statusPort, dbName, table)
-	resp, err := http.Get(addr)
-	if err != nil {
-		return fmt.Errorf("request URL: %v error: %v", addr, err)
+	if db.opt.tls {
+		if db.opt.cacert == "" || db.opt.cert == "" || db.opt.key == "" {
+			return fmt.Errorf("https request --cacert, --cert and --key parameters must be passed")
+		}
+		cert, err := tls.LoadX509KeyPair(db.opt.cert, db.opt.key)
+		if err != nil {
+			return fmt.Errorf("https request set cert or key error : %v", err)
+		}
+		caCert, err := os.ReadFile(db.opt.cacert)
+		if err != nil {
+			return fmt.Errorf("https request set cacert error : %v", err)
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      caCertPool,
+		}
+		transport := &http.Transport{TLSClientConfig: tlsConfig}
+		client := &http.Client{Transport: transport}
+		addr := fmt.Sprintf("https://%v:%v/stats/dump/%v/%v", db.opt.addr, db.opt.statusPort, dbName, table)
+		resp, err := client.Get(addr)
+		if err != nil {
+			return fmt.Errorf("request URL: %v error: %v", addr, err)
+		}
+		defer resp.Body.Close()
+		stats, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("read data from URL: %v response error: %v", addr, err)
+		}
+		if resp.StatusCode != 200 {
+			return fmt.Errorf("request URL: %v server error: %v", addr, string(stats))
+		}
+		fpath := statsPath(dbName, table, dir)
+		fmt.Printf("export stats of %v.%v into %v\n", dbName, table, fpath)
+		return os.WriteFile(fpath, stats, 0666)
+	} else {
+		addr := fmt.Sprintf("http://%v:%v/stats/dump/%v/%v", db.opt.addr, db.opt.statusPort, dbName, table)
+		resp, err := http.Get(addr)
+		if err != nil {
+			return fmt.Errorf("request URL: %v error: %v", addr, err)
+		}
+		stats, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("read data from URL: %v response error: %v", addr, err)
+		}
+		if resp.StatusCode != 200 {
+			return fmt.Errorf("request URL: %v server error: %v", addr, string(stats))
+		}
+		fpath := statsPath(dbName, table, dir)
+		fmt.Printf("export stats of %v.%v into %v\n", dbName, table, fpath)
+		return ioutil.WriteFile(fpath, stats, 0666)
 	}
-	stats, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("read data from URL: %v response error: %v", addr, err)
-	}
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("request URL: %v server error: %v", addr, string(stats))
-	}
-	fpath := statsPath(dbName, table, dir)
-	fmt.Printf("export stats of %v.%v into %v\n", dbName, table, fpath)
-	return ioutil.WriteFile(fpath, stats, 0666)
 }

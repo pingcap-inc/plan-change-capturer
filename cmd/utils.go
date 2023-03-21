@@ -31,6 +31,10 @@ type tidbAccessOptions struct {
 	user       string
 	password   string
 	version    string
+	tls        bool
+	cacert     string
+	cert       string
+	key        string
 }
 
 func (opt *tidbAccessOptions) IntPort() int {
