@@ -96,7 +96,7 @@ func runCaptureOfflineMode(opt *captureOpt) error {
 		if err := importSchemaStats(db2, "", opt.schemaDir); err != nil {
 			return fmt.Errorf("import schema and stats into DB2 error: %v", err)
 		}
-		if db1, err = connectDB(opt.db1, opt.DB); err != nil {
+		if db2, err = connectDB(opt.db2, opt.DB); err != nil {
 			return fmt.Errorf("connect to DB2 error: %v", err)
 		}
 		defer db2.stop()
@@ -114,7 +114,7 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 	if err != nil {
 		return fmt.Errorf("connect to DB1 error: %v", err)
 	}
-	db2, err := startAndConnectDB(opt.db2, opt.DB)
+	db2, err := startDB(opt.db2)
 	if err != nil {
 		return fmt.Errorf("start and connect to DB2 error: %v", err)
 	}
@@ -129,6 +129,9 @@ func runCaptureOnlineMode(opt *captureOpt) error {
 	}
 	if err := importSchemaStats(db2, "", dir); err != nil {
 		return fmt.Errorf("import shcema and stats into DB2 error: %v", err)
+	}
+	if db2, err = connectDB(opt.db2, opt.DB); err != nil {
+		return fmt.Errorf("connect to DB2 error: %v", err)
 	}
 
 	sqls, err := scanQueryFile(opt.queryFile)
