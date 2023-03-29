@@ -174,9 +174,6 @@ func startDB(opt tidbAccessOptions) (*tidbHandler, error) {
 
 	opt.port = fmt.Sprintf("%v", port)
 	opt.statusPort = fmt.Sprintf("%v", status)
-	opt.user = "root"
-	opt.password = ""
-	opt.addr = "127.0.0.1"
 	db, err := connectDB(opt, "")
 	if err != nil {
 		return nil, err
