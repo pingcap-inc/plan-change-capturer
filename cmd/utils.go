@@ -165,6 +165,23 @@ func startAndConnectDB(opt tidbAccessOptions, defaultDB string) (*tidbHandler, e
 	return db, nil
 }
 
+func startDB(opt tidbAccessOptions) (*tidbHandler, error) {
+	if opt.version == "" {
+		return nil, fmt.Errorf("no TiDB version")
+	}
+	p, port, status := instance.StartTiDB(opt.version, opt.IntPort(), opt.IntStatusPort())
+	fmt.Printf("[PCC]: start TiDB ver=%v, port=%v, statusPort=%v \n", opt.version, port, status)
+
+	opt.port = fmt.Sprintf("%v", port)
+	opt.statusPort = fmt.Sprintf("%v", status)
+	db, err := connectDB(opt, "")
+	if err != nil {
+		return nil, err
+	}
+	db.p = p
+	return db, nil
+}
+
 func connectDB(opt tidbAccessOptions, defaultDB string) (*tidbHandler, error) {
 	defaultDB = strings.TrimSpace(strings.ToLower(defaultDB))
 	if defaultDB == "" {
