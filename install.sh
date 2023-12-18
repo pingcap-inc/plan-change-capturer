@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/qw4990/plan-change-capturer/master/install.sh | sh
+
 repo='https://github.com/qw4990/plan-change-capturer'
 
 case $(uname -s) in
@@ -29,8 +31,8 @@ bin_dir=PCC_HOME/bin
 mkdir -p "$bin_dir"
 
 install_binary() {
-    echo "Try to dowmload archive from https://raw.githubusercontent.com/qw4990/plan-change-capturer/main/bin/plan-change-capturer-$os-$arch.tar.gz"
-    curl "https://raw.githubusercontent.com/qw4990/plan-change-capturer/main/bin/plan-change-capturer-$os-$arch.tar.gz" -o "/tmp/plan-change-capturer-$os-$arch.tar.gz" || return 1
+    echo "Try to dowmload archive from https://raw.githubusercontent.com/qw4990/plan-change-capturer/master/bin/plan-change-capturer-$os-$arch.tar.gz"
+    curl "https://raw.githubusercontent.com/qw4990/plan-change-capturer/master/bin/plan-change-capturer-$os-$arch.tar.gz" -o "/tmp/plan-change-capturer-$os-$arch.tar.gz" || return 1
     tar -zxf "/tmp/plan-change-capturer-$os-$arch.tar.gz" -C "$bin_dir" || return 1
     rm "/tmp/plan-change-capturer-$os-$arch.tar.gz"
     return 0
