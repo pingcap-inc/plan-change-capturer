@@ -4,7 +4,7 @@ function compile()
   GITHASH=$(git rev-parse HEAD)
   GO111MODULE=on CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -o bin/plan-change-capturer main.go
   cd bin
-  tar -czf plan-change-capturer-$1-$2.tar.gz plan-change-capturer
+  tar --uname "" --gname "" --uid 0 --gid 0 -czf plan-change-capturer-$1-$2.tar.gz plan-change-capturer
   cd ..
 }
 
