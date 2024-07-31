@@ -158,11 +158,12 @@ func capturePlanChanges(db1, db2 *tidbHandler, qs []Query, digestFlag bool) erro
 	currentSchema := ""
 	for _, q := range qs {
 		if strings.ToLower(currentSchema) != strings.ToLower(q.Schema) {
-			if _, err := db1.db.Exec("use " + q.Schema); err != nil {
+			changeDBStmt := fmt.Sprintf("use `%v`", q.Schema)
+			if _, err := db1.db.Exec(changeDBStmt); err != nil {
 				fmt.Printf("[PCC] run `use %v` for %v error=%v\n", q.Schema, q.SQL, err)
 				continue
 			}
-			if _, err := db2.db.Exec("use " + q.Schema); err != nil {
+			if _, err := db2.db.Exec(changeDBStmt); err != nil {
 				fmt.Printf("[PCC] run `use %v` for %v error=%v\n", q.Schema, q.SQL, err)
 				continue
 			}
@@ -170,10 +171,12 @@ func capturePlanChanges(db1, db2 *tidbHandler, qs []Query, digestFlag bool) erro
 
 		sql := q.SQL
 		if matchPrefixCaseInsensitive(sql, "use") {
-			if _, err := db1.db.Exec(sql); err != nil {
+			dbName := strings.TrimSpace(sql[len("use "):])
+			changeDBStmt := fmt.Sprintf("use `%v`", dbName)
+			if _, err := db1.db.Exec(changeDBStmt); err != nil {
 				return err
 			}
-			if _, err := db2.db.Exec(sql); err != nil {
+			if _, err := db2.db.Exec(changeDBStmt); err != nil {
 				return err
 			}
 		} else if matchPrefixCaseInsensitive(sql, "explain") {

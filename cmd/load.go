@@ -109,7 +109,7 @@ func parsePlanFromPackages(zrs []*zip.Reader) ([]plan.Plan, error) {
 func explainSQLsAndCompare(db *tidbHandler, originPlans []plan.Plan) ([]plan.Plan, error) {
 	newPlans := make([]plan.Plan, 0)
 	for _, originPlan := range originPlans {
-		if err := db.execute(fmt.Sprintf("use %s", originPlan.Schema)); err != nil {
+		if err := db.execute(fmt.Sprintf("use `%s`", originPlan.Schema)); err != nil {
 			return nil, err
 		}
 		explainRows, err := runExplain(db, fmt.Sprintf("explain %v", originPlan.SQL))

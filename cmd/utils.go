@@ -83,7 +83,8 @@ func (db *tidbHandler) getDBs() ([]string, error) {
 }
 
 func (db *tidbHandler) getTableAndViews(dbName string) ([]string, []string, error) {
-	_, err := db.db.Exec("use " + dbName)
+	changeDBStmt := fmt.Sprintf("use `%v`", dbName)
+	_, err := db.db.Exec(changeDBStmt)
 	if err != nil {
 		return nil, nil, fmt.Errorf("switch to DB: %v error: %v", dbName, err)
 	}
