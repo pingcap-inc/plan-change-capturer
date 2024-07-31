@@ -247,6 +247,7 @@ func exportTableStats(db *tidbHandler, dbName, table, dir string) error {
 		tlsConfig := &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			RootCAs:      caCertPool,
+			MinVersion:   tls.VersionTLS13,
 		}
 		transport := &http.Transport{TLSClientConfig: tlsConfig}
 		client := &http.Client{Transport: transport}
