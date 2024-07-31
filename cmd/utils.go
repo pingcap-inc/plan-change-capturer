@@ -133,8 +133,13 @@ func (db *tidbHandler) getVersion(shortName bool) (string, error) {
 
 func (db *tidbHandler) execute(sqls ...string) error {
 	for _, sql := range sqls {
-		if _, err := db.db.Exec(sql); err != nil {
-			return fmt.Errorf("execute `%v` error: %v", sql, err)
+		stmt, err := db.db.Prepare(sql)
+		if err != nil {
+			return err
+		}
+		_, err = stmt.Exec()
+		if err != nil {
+			return err
 		}
 	}
 	return nil
